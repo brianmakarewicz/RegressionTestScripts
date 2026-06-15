@@ -41,3 +41,9 @@ RegressionTestScripts/
 ├── utils/       Helper functions
 └── test-data/   CSV and JSON test data
 ```
+
+## Documentation
+
+For detailed framework setup, environment configuration, naming conventions, and team workflow, see:
+
+[Framework Guide](docs/framework-guide.md)
