@@ -4,12 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-      "test": "playwright test",
-  "test:ui": "playwright test --ui",
-  "test:headed": "playwright test --headed",
-  "test:chromium": "playwright test --project=chromium",
-  "report": "playwright show-report"
-
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:chromium": "playwright test --project=chromium",
+    "report": "playwright show-report"
   },
   "repository": {
     "type": "git",
@@ -26,5 +25,8 @@
   "devDependencies": {
     "@playwright/test": "^1.60.0",
     "@types/node": "^25.9.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
   }
 }
