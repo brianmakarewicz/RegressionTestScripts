@@ -1,6 +1,5 @@
 import { test } from '@playwright/test';
 import { AuthenticationWorkflow } from '../../workflows/authentication.workflow'
-import { FusionLoginPage } from '../../pages/fusion-login.page';
 
 test.describe('Oracle authentication', () => {
   test('logs in with the selected environment credentials', async ({ page }) => {

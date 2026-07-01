@@ -1,5 +1,5 @@
 import { type Page } from '@playwright/test';
-import { FusionLoginPage } from '../pages/fusion-login.page';
+import { FusionLoginPage } from '../pages/common/fusion-login.page';
 
 export class AuthenticationWorkflow {
   private readonly loginPage: FusionLoginPage;
