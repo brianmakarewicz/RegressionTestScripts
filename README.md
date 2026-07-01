@@ -9,6 +9,12 @@ Install dependencies:
 ```bash
 npm install
 ```
+```bash
+npm install --save-dev @types/node
+```
+```bash
+npm install csv-parse
+```
 
 ## Run Tests
 
