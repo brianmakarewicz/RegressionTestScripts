@@ -9,6 +9,9 @@ Install dependencies:
 ```bash
 npm install
 ```
+```
+npm install dotenv
+```
 ```bash
 npm install --save-dev @types/node
 ```
