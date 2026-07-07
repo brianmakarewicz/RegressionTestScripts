@@ -1,4 +1,4 @@
-# Playwright Framework Guide
+# Playwright Architecture Guide
 
 ## Overview
 
