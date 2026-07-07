@@ -106,24 +106,31 @@ RegressionTestScripts/
 │   └── environment.ts
 │
 ├── docs/
-│   └── framework-guide.md
+│   └── architecture-guide.md
 │
 ├── environments/
 │   └── .env.example
 │
 ├── pages/
-│   └── common/
-│       └── fusion-login.page.ts
+│   ├── common/
+│   │   ├── fusion-login.page.ts
+│   │   └── fusion-navigator.page.ts
+│   │
+│   └── erp/
+│       └── gl/
+│           └── create-journal.page.ts
 │
 ├── workflows/
 │   └── authentication.workflow.ts
 │
 ├── tests/
 │   ├── authentication/
-│   │   └── oracle-login.spec.ts
+│   │   ├── oracle-login.spec.ts
+│   │   └── test-environment.spec.ts
 │   │
-│   └── frameworks/
-│       └── test-environment.spec.ts
+│   └── erp/
+│       └── gl/
+│           └── create-journal-navigation.spec.ts
 │
 ├── utils/
 │
@@ -275,21 +282,15 @@ No code changes are required.
 
 # Framework Validation
 
-Framework validation tests are stored under:
-
-```text
-tests/frameworks/
-```
-
-These tests verify framework functionality rather than business functionality.
+Framework validation tests are stored within the area they validate.
 
 Current framework validations include:
 
-* Environment variables load correctly.
-* Correct environment file is selected.
-* Framework configuration behaves as expected.
+- Authentication environment validation (`tests/authentication`)
+- Oracle login validation
+- Navigation validation
 
-These tests should not be confused with Oracle business process tests.
+As additional framework components are introduced, validation tests should be placed alongside the functional area they support rather than in a generic framework folder.
 
 ---
 
@@ -317,7 +318,7 @@ Responsibilities include:
 * Enter username.
 * Enter password.
 * Click the login button.
-* Verify successful authentication.
+* Wait for the Oracle Fusion home page to become ready for automation.
 
 The Page Object is responsible only for interacting with the login page.
 
@@ -340,7 +341,7 @@ Instead of every test calling:
 ```typescript
 await loginPage.goto();
 await loginPage.login();
-await loginPage.verifySuccessfulLogin();
+await loginPage.waitForFusionHomePage();
 ```
 
 tests simply execute:
@@ -371,18 +372,23 @@ The authentication test validates that:
 
 ---
 
-# Login Validation Strategy
+# Login Readiness Strategy
 
-Successful authentication is verified by opening the Oracle Fusion **Settings and Actions** menu.
+Successful authentication is verified by waiting for the Oracle Fusion home page shell to become available.
 
-The framework validates that the **Settings and Actions** heading becomes visible.
+The framework validates that the following Oracle Fusion controls are visible:
 
-This validation is preferred over checking for the Oracle logo because it confirms:
+* Navigator
+* Settings and Actions
+
+This validation confirms that:
 
 * The user is authenticated.
-* Oracle Fusion finished loading.
-* The user-specific menu can be opened.
+* Oracle Fusion has finished loading.
+* The Oracle Fusion shell is available.
 * The application is ready for additional automation.
+
+Methods named `waitFor...` should validate page readiness only and should not change the application state by clicking buttons, opening menus, or performing business actions.
 
 ---
 
@@ -404,6 +410,8 @@ Business Tests
 ```
 
 Each layer has a single responsibility.
+
+Each layer should depend only on the layer directly beneath it. Tests should not bypass Workflows to interact directly with Page Objects unless the workflow layer does not add business value.
 
 ### Environment Configuration
 
@@ -466,6 +474,52 @@ The test should describe **what** is happening rather than **how** it happens.
 
 ---
 
+# Page Object Design Principles
+
+Page Objects represent a single Oracle page or reusable Oracle Fusion UI component.
+
+Each Page Object should expose meaningful user actions rather than Playwright implementation details.
+
+Examples:
+
+* login()
+* goToCreateJournalPage()
+* selectLedger()
+* save()
+
+Page Objects should:
+
+* Know where controls are located.
+* Know how to interact with those controls.
+* Hide locator implementation details.
+* Return the page in a predictable state.
+
+Tests and workflows should never interact with Playwright locators directly.
+
+Methods named `waitFor...` should only validate page readiness and should not change the application state.
+
+# Synchronization Strategy
+
+The framework avoids arbitrary delays whenever possible.
+
+Instead of using fixed waits such as:
+
+```typescript
+await page.waitForTimeout(5000);
+```
+
+the framework waits for application conditions required for the next action.
+
+Examples include:
+
+* Elements becoming visible.
+* Elements becoming enabled.
+* Oracle Fusion pages reaching a ready state.
+
+Synchronization should always be based on the application state rather than elapsed time.
+
+Increasing global timeouts should be considered only after verifying that the application legitimately requires additional time to complete an operation.
+
 # Git Workflow
 
 Development follows a feature branch workflow.
@@ -488,6 +542,8 @@ git checkout -b bryan/manual-journal
 ```
 
 Each feature should have its own branch.
+
+Feature branches should be created from the latest version of the `main` branch after synchronizing with the remote repository.
 
 Examples:
 
@@ -556,7 +612,9 @@ The framework follows these principles:
 * Prefer reusable Page Objects.
 * Prefer reusable Workflows.
 * Validate one feature at a time.
+* Prefer waiting for application readiness over fixed delays.
 * Build small, test often, and commit frequently.
+* Keep Page Objects focused on a single Oracle page or reusable Oracle component.
 
 ---
 
@@ -564,8 +622,7 @@ The framework follows these principles:
 
 Planned enhancements include:
 
-* Common navigation page
-* General Ledger page objects
+* Complete Create Journal page object
 * Manual Journal workflow
 * CSV-driven data processing
 * Looping through multiple journal entries
