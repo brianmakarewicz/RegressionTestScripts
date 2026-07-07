@@ -11,6 +11,6 @@ export class AuthenticationWorkflow {
   async login(): Promise<void> {
     await this.loginPage.goto();
     await this.loginPage.login();
-    await this.loginPage.waitForFusionHomePage();
+    await this.loginPage.verifySuccessfulLogin();
   }
 }

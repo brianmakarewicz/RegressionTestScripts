@@ -28,12 +28,12 @@ export class FusionLoginPage {
   }
 
   async waitForFusionHomePage(): Promise<void> {
-  await expect(
-    this.page.getByRole("link", { name: "Navigator" })
-  ).toBeVisible({ timeout: 90_000 });
+    await expect(
+      this.page.getByRole("link", { name: "Navigator" }),
+    ).toBeVisible({ timeout: 90_000 });
 
-  await expect(
-    this.page.getByRole("link", { name: "Settings and Actions" })
-  ).toBeVisible();
-}
+    await expect(
+      this.page.getByRole("link", { name: "Settings and Actions" }),
+    ).toBeVisible();
+  }
 }
