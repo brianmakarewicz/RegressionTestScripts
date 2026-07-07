@@ -12,13 +12,17 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
+  /* Maximum time one test can run for. 45 seconds */
+  //timeout: 45_000,
+  /* We can use this to set a global timeout for the entire test suite. This can be updated as needed. 10 minutes */
+  //globalTimeout: 10 * 60 * 1000,
   testDir: './tests',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  /* Retry on CI 2 times and locally 1 time */
+  retries: process.env.CI ? 2 : 1,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
@@ -28,8 +32,17 @@ export default defineConfig({
     /* Base URL to use in actions like `await page.goto('')`. */
     // baseURL: 'http://localhost:3000',
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* Always collect trace . See https://playwright.dev/docs/trace-viewer */
+    /* Change this to 'retain-on-failure' whenever we are ready to move this to PROD - 'on' is good for development */
+    trace: 'on',
+    /*Set the action timeout to 0 to disable the default 30 second timeout for all actions. This allows for longer running actions without timing out. */
+    actionTimeout: 0,
+    /* Ignore HTTPS errors to allow testing against self-signed certificates. */
+    /* Enable only if testing an environment with invalid/self-signed certificates. */
+    /*ignoreHTTPSErrors: true,*/
+    video: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    headless: true,
   },
 
   /* Configure projects for major browsers */
