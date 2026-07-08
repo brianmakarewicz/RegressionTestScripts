@@ -55,4 +55,4 @@ RegressionTestScripts/
 
 For detailed framework setup, environment configuration, naming conventions, and team workflow, see:
 
-[Framework Guide](docs/framework-guide.md)
+[Architecture Guide](docs/architecture-guide.md)

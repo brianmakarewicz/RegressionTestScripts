@@ -601,6 +601,18 @@ Only approved Pull Requests should be merged into **main**.
 
 ---
 
+## Pull Request Review Flow
+
+After a PR is opened:
+
+1. The GitHub review agent checks PRs hourly.
+2. If the PR is clean, the agent may approve or merge it.
+3. If the PR is blocked, the developer fixes the issue and pushes updates.
+4. The agent rechecks within the next hourly review cycle.
+5. A coworker with permission may manually approve or override if needed.
+
+---
+
 # Coding Standards
 
 The framework follows these principles:
@@ -629,6 +641,7 @@ Before opening a PR:
 - [ ] New files are in the correct framework layer.
 - [ ] No client credentials or client names are committed.
 - [ ] Branch is up to date with main.
+- [ ] If the review agent flags an issue, fix the issue and push the correction for the next automated review cycle.
 
 # Future Enhancements
 
