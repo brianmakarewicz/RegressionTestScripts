@@ -618,6 +618,18 @@ The framework follows these principles:
 
 ---
 
+# Pull Request Checklist
+
+Before opening a PR:
+
+- [ ] All affected Playwright tests pass.
+- [ ] Renamed methods have all references updated.
+- [ ] Imports compile without errors.
+- [ ] Documentation updated if architecture changed.
+- [ ] New files are in the correct framework layer.
+- [ ] No client credentials or client names are committed.
+- [ ] Branch is up to date with main.
+
 # Future Enhancements
 
 Planned enhancements include:
