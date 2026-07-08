@@ -8,9 +8,17 @@ export class FusionLoginPage {
     expect(env.baseUrl, "ORACLE_BASE_URL must be configured").toBeTruthy();
 
     await this.page.goto(env.baseUrl!);
-    await expect(this.page).toHaveTitle(/Cloud Sign In/);
+
     await expect(
       this.page.getByRole("textbox", { name: "Username", exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    await expect(
+      this.page.getByRole("textbox", { name: "Password", exact: true }),
+    ).toBeVisible();
+
+    await expect(
+      this.page.getByRole("button", { name: "Next", exact: true }),
     ).toBeVisible();
   }
 
