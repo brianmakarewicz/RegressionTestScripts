@@ -3,7 +3,7 @@ import { AuthenticationWorkflow } from '../../../workflows/authentication.workfl
 import { FusionNavigatorPage } from '../../../pages/common/fusion-navigator.page';
 import { CreateJournalPage } from '../../../pages/erp/gl/create-journal.page';
 
-test('user can navigate to the Create Journal page', async ({ page }) => {
+test('user can enter Create Journal header information and attach a file', async ({ page }) => {
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);
   const createJournalPage = new CreateJournalPage(page);
@@ -14,5 +14,6 @@ test('user can navigate to the Create Journal page', async ({ page }) => {
   await createJournalPage.waitForCreateJournalPage();
   await createJournalPage.enterJournalBatchName('TEST_BATCH_001');
   await createJournalPage.enterBatchDescription('TEST_BATCH_DESCRIPTION_001');
-  await createJournalPage.enterAccountingPeriod('Oct-25');
+  await createJournalPage.enterAccountingPeriod('Oct-2026');
+  await createJournalPage.chooseAttachmentFile('test-data/attachments/TestFile.example.txt');
 });

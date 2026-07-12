@@ -10,3 +10,11 @@ node_modules/
 #Client environment files
 environments/.env.*
 !environments/.env.example
+
+# Local test data
+test-data/**
+!test-data/**/
+!test-data/.gitkeep
+!test-data/README.md
+!test-data/**/*.example.*
+!test-data/**/.gitkeep

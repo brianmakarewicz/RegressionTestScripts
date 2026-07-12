@@ -26,27 +26,22 @@ export class CreateJournalPage {
       .getByRole('textbox', { name: 'Accounting Period' })
       .fill(accountingPeriod);
   }
+
+  async chooseAttachmentFile(filePath: string): Promise<void> {
+    await this.page
+      .getByRole('link', { name: 'Manage Attachments' })
+      .click();
+
+    await expect(
+      this.page.locator('input[type="file"][name*="ifPopup"]'),
+    ).toBeVisible({ timeout: 30_000 });
+
+    await this.page
+      .locator('input[type="file"][name*="ifPopup"]')
+      .setInputFiles(filePath);
+
+    await this.page
+      .getByRole('button', { name: 'OK' })
+      .click();
+  }
 }
-
-
-
-
-// import { test, expect } from '@playwright/test';
-
-// test('test', async ({ page }) => {
-//   await page.getByRole('textbox', { name: 'Journal Batch' }).click();
-//   await page.getByRole('textbox', { name: 'Journal Batch' }).fill('TEST_11_07102026MMHH');
-//   await page.locator('textarea[name="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:pt1:ap1:showLessBatchDescription"]').click();
-//   await page.locator('textarea[name="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:pt1:ap1:showLessBatchDescription"]').fill('TEST_11_07102026');
-//   await page.getByRole('combobox', { name: 'Accounting Period' }).click();
-//   await page.getByRole('gridcell', { name: 'Oct-' }).click();
-//   await page.getByRole('link', { name: 'Manage Attachments' }).click();
-//   await page.getByRole('button', { name: 'File Name' }).click();
-//   await page.getByRole('button', { name: 'File Name' }).setInputFiles('TestFile.txt');
-//   await page.getByRole('button', { name: 'OK' }).click();
-//   await page.getByTitle('Select Date').click();
-//   await page.getByRole('gridcell', { name: '31' }).click();
-//   await page.locator('[id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:pt1:ap1:sis3:userJeCategoryNameInputSearch1::btn"]').click();
-//   await page.getByRole('textbox', { name: 'Category' }).fill('Djustment');
-//   await page.getByText('djustment').first().click();
-// });
