@@ -7,14 +7,6 @@ export class CreateJournalPage {
     await expect(
       this.page.getByRole('heading', { name: 'Create Journal' }),
     ).toBeVisible({ timeout: 30_000 });
-
-    await expect(
-      this.page.locator('input[name*="showLessBatchName"]'),
-    ).toBeVisible();
-
-    await expect(
-      this.page.locator('textarea[name*="showLessBatchDescription"]'),
-    ).toBeVisible();
   }
 
   async enterJournalBatchName(journalBatchName: string): Promise<void> {
@@ -27,6 +19,12 @@ export class CreateJournalPage {
     await this.page
       .locator('textarea[name*="showLessBatchDescription"]')
       .fill(description);
+  }
+
+  async enterAccountingPeriod(accountingPeriod: string): Promise<void> {
+    await this.page
+      .getByRole('textbox', { name: 'Accounting Period' })
+      .fill(accountingPeriod);
   }
 }
 

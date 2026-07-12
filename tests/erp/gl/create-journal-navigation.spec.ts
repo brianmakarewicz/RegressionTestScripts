@@ -14,4 +14,5 @@ test('user can navigate to the Create Journal page', async ({ page }) => {
   await createJournalPage.waitForCreateJournalPage();
   await createJournalPage.enterJournalBatchName('TEST_BATCH_001');
   await createJournalPage.enterBatchDescription('TEST_BATCH_DESCRIPTION_001');
+  await createJournalPage.enterAccountingPeriod('Oct-25');
 });
