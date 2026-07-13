@@ -216,6 +216,9 @@ def main() -> None:
     client_alias = os.getenv("CLIENT_ALIAS", "unknown")
     environment = os.getenv("ENVIRONMENT", "unknown")
 
+    csv_path = find_invoice_csv()
+    output_path = ROOT / "output" / f"{csv_path.stem}_log.json"
+
     output_path, rows = read_invoice_rows()
     if not rows:
         raise RuntimeError(f"No invoice rows found in {csv_path}")
