@@ -218,7 +218,7 @@ def main() -> None:
 
     output_path, rows = read_invoice_rows()
     if not rows:
-        raise RuntimeError(f"No invoice rows found in {CSV_PATH}")
+        raise RuntimeError(f"No invoice rows found in {csv_path}")
 
     payload = build_invoice_payload(rows[0])
     response_result = create_invoice(payload)
