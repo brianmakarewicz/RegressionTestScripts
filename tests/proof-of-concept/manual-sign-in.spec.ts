@@ -28,8 +28,8 @@ test('continue after manual sign in', async ({ page }) => {
 
   await page.goto('https://fa-esew-dev28-saasfademo1.ds-fa.oraclepdemos.com/');
 
-  //await  expect(page.locator('td').filter({ hasText: 'Navigator' }).first()).toBeVisible();
-  await  expect(page.locator('td').filter({ hasText: 'Navigator' }).first()).toBeVisible({ timeout: 5 * 60 * 1000 });
+  await  expect(page.locator('td').filter({ hasText: 'Navigator' }).first()).toBeVisible();
+ // await  expect(page.locator('td').filter({ hasText: 'Navigator' }).first()).toBeVisible({ timeout: 5 * 60 * 1000 });
 
   await page.locator('#playwright-signin-message').evaluate(el => el.remove()).catch(() => {});
 

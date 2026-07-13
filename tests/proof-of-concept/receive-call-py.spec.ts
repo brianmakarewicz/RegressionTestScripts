@@ -35,7 +35,7 @@ test('show Python message in banner', async ({ page }) => {
   await page.goto('https://fa-esew-dev28-saasfademo1.ds-fa.oraclepdemos.com/fscmUI/faces/FuseWelcome?fndThemeName=Vision_Default');
 
   //await expect(page.locator('#playwright-signin-message')).toHaveText(pythonMessage);
-  await page.pause();
+  //await page.pause();
 
   const output = execFileSync('python', ['tests/proof-of-concept/second-py.py'], {
   encoding: 'utf-8',
