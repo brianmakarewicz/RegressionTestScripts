@@ -45,31 +45,6 @@ test('navigate to created invoice in Oracle Fusion', async ({ page }) => {
   const oracleUsername = requiredEnv('ORACLE_USERNAME');
   const oraclePassword = requiredEnv('ORACLE_PASSWORD');
 
-  const bannerMessage = `Using ${clientAlias}/${environment}. Invoice: ${createdInvoice.invoiceNumber}`;
-
-  await page.addInitScript((messageFromEnvAndPython) => {
-    window.addEventListener('DOMContentLoaded', () => {
-      if (document.getElementById('playwright-signin-message')) return;
-
-      const banner = document.createElement('div');
-      banner.id = 'playwright-signin-message';
-      banner.textContent = messageFromEnvAndPython;
-      banner.style.position = 'fixed';
-      banner.style.top = '0';
-      banner.style.left = '0';
-      banner.style.right = '0';
-      banner.style.zIndex = '999999';
-      banner.style.padding = '12px 16px';
-      banner.style.background = '#fff3cd';
-      banner.style.color = '#222';
-      banner.style.font = '16px Arial, sans-serif';
-      banner.style.borderBottom = '1px solid #d6b656';
-      banner.style.textAlign = 'center';
-
-      document.body.appendChild(banner);
-    });
-  }, bannerMessage);
-
   await page.goto(oracleBaseUrl);
 
   await page.getByLabel(/user id|username|email/i).fill(oracleUsername);
@@ -84,8 +59,13 @@ test('navigate to created invoice in Oracle Fusion', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Invoice Number' }).fill(createdInvoice.invoiceNumber);
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await page.getByRole('link', { name: createdInvoice.invoiceNumber }).click();
-  // await page.locator('[id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:pm1:r1:0:ap1:r7:1:me1"] > .x1jp > table > tbody > tr > td:nth-child(3) > .xmo').click();
-  // await page.locator('[id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:pm1:r1:0:ap1:r7:1:me2"] > .x1j5 > .x1ja').click();
+  await expect(page.getByRole('heading', { name: 'Invoice Details' })).toBeVisible();
+  await page.getByRole('link', { name: 'Actions', exact: true }).click();
+  await page.getByText('Validate', { exact: true }).click();
+  await expect(page.locator('td').filter({ hasText: /^Validated$/ }).first()).toBeVisible();
+  await page.getByRole('link', { name: 'Actions', exact: true }).click();
+  await page.getByText('Approval', { exact: true }).click();
+  await page.getByText('Initiate').nth(1).click();
 
 
   await expect(page.getByText(createdInvoice.invoiceNumber, { exact: false })).toBeVisible({
