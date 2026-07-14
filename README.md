@@ -18,6 +18,12 @@ npm install --save-dev @types/node
 ```bash
 npm install csv-parse
 ```
+```bash
+py -m pip install requests python-dotenv
+```
+```bash
+npm install -D @types/node
+```
 
 ## Run Tests
 
