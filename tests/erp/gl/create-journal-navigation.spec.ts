@@ -14,6 +14,7 @@ test('user can enter Create Journal header information and attach a file', async
   await createJournalPage.waitForCreateJournalPage();
   await createJournalPage.enterJournalBatchName('TEST_BATCH_001');
   await createJournalPage.enterBatchDescription('TEST_BATCH_DESCRIPTION_001');
-  await createJournalPage.enterAccountingPeriod('Oct-2026');
+  await createJournalPage.enterAccountingPeriod('Oct-25');
   await createJournalPage.chooseAttachmentFile('test-data/attachments/TestFile.example.txt');
+  await createJournalPage.enterAccountingDate('10/31/2025');
 });

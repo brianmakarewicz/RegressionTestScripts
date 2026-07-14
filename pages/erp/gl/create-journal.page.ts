@@ -44,4 +44,11 @@ export class CreateJournalPage {
       .getByRole('button', { name: 'OK' })
       .click();
   }
+
+  async enterAccountingDate(accountingDate: string): Promise<void> {
+    await this.page
+      .getByRole('textbox', { name: 'Accounting Date' })
+      .fill(accountingDate);
+  }
+
 }
