@@ -90,7 +90,7 @@ export class CreateJournalPage {
 
     await lineRow.locator("td").nth(3).click();
 
-    const accountTextbox = this.page.getByRole("textbox", {
+    const accountTextbox = lineRow.getByRole("textbox", {
       name: "Account",
       exact: true,
     });
@@ -98,5 +98,76 @@ export class CreateJournalPage {
     await expect(accountTextbox).toBeVisible({ timeout: 30_000 });
     await accountTextbox.fill(account);
     await expect(accountTextbox).toHaveValue(account);
+
+    // await accountTextbox.press("Tab");
+  }
+
+  async enterJournalLineDebit(
+    lineNumber: number,
+    debitAmount: string,
+  ): Promise<void> {
+    const lineRow = this.page.getByRole("row", {
+      name: new RegExp(`^Expand ${lineNumber}\\b`),
+    });
+
+    await lineRow.locator("td").nth(4).click();
+
+    const debitTextbox = this.page.getByRole("textbox", {
+      name: "Entered Debit",
+    });
+
+    await expect(debitTextbox).toBeVisible({ timeout: 30_000 });
+    await debitTextbox.fill(debitAmount);
+    await expect(debitTextbox).toHaveValue(debitAmount);
+  }
+
+  async enterJournalLineCredit(
+    lineNumber: number,
+    creditAmount: string,
+  ): Promise<void> {
+    const lineRow = this.page.getByRole("row", {
+      name: new RegExp(`^Expand ${lineNumber}\\b`),
+    });
+
+    await lineRow.locator("td").nth(5).click();
+
+    const creditTextbox = this.page.getByRole("textbox", {
+      name: "Entered Credit",
+    });
+
+    await expect(creditTextbox).toBeVisible({ timeout: 30_000 });
+    await creditTextbox.fill(creditAmount);
+    await expect(creditTextbox).toHaveValue(creditAmount);
+  }
+
+  async enterJournalLineDescription(
+    lineNumber: number,
+    description: string,
+  ): Promise<void> {
+    const lineRow = this.page.getByRole("row", {
+      name: new RegExp(`^Expand ${lineNumber}\\b`),
+    });
+
+    const descriptionTextbox = lineRow.getByRole("textbox", {
+      name: "Description",
+    });
+
+    await descriptionTextbox.scrollIntoViewIfNeeded();
+    await expect(descriptionTextbox).toBeVisible({ timeout: 30_000 });
+    await descriptionTextbox.fill(description);
+    await expect(descriptionTextbox).toHaveValue(description);
+  }
+
+  async saveAndCreateAnother(): Promise<void> {
+    await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
+
+    const saveAndCreateAnotherOption = this.page.getByRole("menuitem", {
+      name: "Save and Create Another",
+    });
+
+    await expect(saveAndCreateAnotherOption).toBeVisible({ timeout: 30_000 });
+    await saveAndCreateAnotherOption.click();
+
+    await this.waitForCreateJournalPage();
   }
 }
