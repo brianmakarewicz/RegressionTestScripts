@@ -36,6 +36,6 @@ test("user can enter Create Journal header information and attach a file", async
   await createJournalPage.enterJournalLineCredit(2, "5");
   await createJournalPage.enterJournalLineDescription(2, "Description_2");
 
-  await createJournalPage.saveAndCreateAnother();
+  await createJournalPage.saveAndClose();
 
 });

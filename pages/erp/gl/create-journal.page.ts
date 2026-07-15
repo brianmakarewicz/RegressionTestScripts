@@ -158,16 +158,30 @@ export class CreateJournalPage {
     await expect(descriptionTextbox).toHaveValue(description);
   }
 
-  async saveAndCreateAnother(): Promise<void> {
-    await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
+  async saveAndClose(): Promise<void> {
+    await this.page
+      .locator('[id*="saveBatch"][id$="::popEl"]')
+      .click();
 
-    const saveAndCreateAnotherOption = this.page.getByRole("menuitem", {
-      name: "Save and Create Another",
+    const saveAndCloseOption = this.page.getByRole("menuitem", {
+      name: "Save and Close",
     });
 
-    await expect(saveAndCreateAnotherOption).toBeVisible({ timeout: 30_000 });
-    await saveAndCreateAnotherOption.click();
-
-    await this.waitForCreateJournalPage();
+    await expect(saveAndCloseOption).toBeVisible({ timeout: 30_000 });
+    await saveAndCloseOption.click();
   }
+
+  //SAVED FOR FUTURE REFERENCE: This method is currently not used in the test, but it can be useful for future scenarios where we want to save the journal and create another one immediately after.
+  // async saveAndCreateAnother(): Promise<void> {
+  //   await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
+
+  //   const saveAndCreateAnotherOption = this.page.getByRole("menuitem", {
+  //     name: "Save and Create Another",
+  //   });
+
+  //   await expect(saveAndCreateAnotherOption).toBeVisible({ timeout: 30_000 });
+  //   await saveAndCreateAnotherOption.click();
+
+  //   await this.waitForCreateJournalPage();
+  // }
 }
