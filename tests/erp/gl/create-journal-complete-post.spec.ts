@@ -16,10 +16,13 @@ test("user can create, complete, and post a journal", async ({
   await createJournalPage.waitForCreateJournalPage();
   await createJournalPage.enterJournalBatchName(`TEST_BATCH_${Date.now()}`);
   await createJournalPage.enterBatchDescription("TEST_BATCH_DESCRIPTION_001");
+  await createJournalPage.selectBalanceType("Actual");
+  //await createJournalPage.selectBalanceType("Encumbrance"); //Might use in future tests for encumbrance journals
   await createJournalPage.selectAccountingPeriod("Oct-25");
   await createJournalPage.chooseAttachmentFile(
     "test-data/attachments/TestFile.example.txt",
   );
+  await createJournalPage.selectLedger("FAYNC Ledger");
   await createJournalPage.selectCategory("Adjustment");
 
   await createJournalPage.enterJournalLineAccount(

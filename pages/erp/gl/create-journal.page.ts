@@ -21,6 +21,16 @@ export class CreateJournalPage {
       .fill(description);
   }
 
+  async selectBalanceType(
+    balanceType: "Actual" | "Encumbrance",
+  ): Promise<void> {
+    const balanceTypeSelect = this.page.getByLabel("Balance Type");
+
+    const balanceTypeValue = balanceType === "Actual" ? "0" : "1";
+
+    await balanceTypeSelect.selectOption(balanceTypeValue);
+  }
+
   async selectAccountingPeriod(accountingPeriod: string): Promise<void> {
     const accountingPeriodTextbox = this.page.getByRole("textbox", {
       name: "Accounting Period",
@@ -60,6 +70,24 @@ export class CreateJournalPage {
     });
 
     await this.page.getByRole("button", { name: "OK" }).click();
+  }
+
+  async selectLedger(ledgerName: string): Promise<void> {
+    const ledgerTextbox = this.page.getByRole("textbox", {
+      name: "Ledger",
+    });
+
+    await ledgerTextbox.click();
+
+    const ledgerOption = this.page.getByRole("gridcell", {
+      name: ledgerName,
+      exact: true,
+    });
+
+    await expect(ledgerOption).toBeVisible({ timeout: 30_000 });
+    await ledgerOption.click();
+
+    await expect(ledgerTextbox).toHaveValue(ledgerName);
   }
 
   async selectCategory(category: string): Promise<void> {
@@ -193,7 +221,6 @@ export class CreateJournalPage {
     await this.page.locator('[id*="userResponsePopupDialogButtonOk"]').click();
   }
 
-  
   //SAVED FOR FUTURE REFERENCE: This method is currently not used in the test, but it can be useful for future scenarios where we want to save the journal and create another one immediately after.
   // async saveAndCreateAnother(): Promise<void> {
   //   await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
