@@ -230,7 +230,7 @@ PASSWORD
 
 # Git Ignore Rules
 
-Real credentials should never be committed to GitHub.
+Real credentials and real client test data should never be committed to GitHub.
 
 The project ignores all local environment files except the template.
 
@@ -252,6 +252,48 @@ environments/.env.c001.dev
 environments/.env.c001.test
 environments/.env.c001.prod
 ```
+
+The project also ignores local test data by default.
+
+```gitignore
+test-data/**
+!test-data/**/
+!test-data/.gitkeep
+!test-data/README.md
+!test-data/**/*.example.*
+!test-data/**/.gitkeep
+```
+
+Tracked test data should be limited to sanitized examples or files intentionally approved by the team.
+
+Allowed examples:
+
+```text
+test-data/manual-journal.example.csv
+test-data/manual-journal.example.json
+test-data/attachments/TestFile.example.txt
+```
+
+Ignored local files:
+
+```text
+test-data/c001/dev/manual-journal.csv
+test-data/c001/dev/attachments/supporting-document.pdf
+test-data/client-specific-journal-data.xlsx
+```
+
+Page Objects should not read test data files directly. Page Objects should receive values from tests, workflows, or future data helpers.
+
+Example:
+
+```typescript
+await createJournalPage.enterJournalBatchName(journalBatchName);
+await createJournalPage.chooseAttachmentFile(attachmentFilePath);
+```
+
+This keeps the automation reusable across clients while allowing each client and environment to use its own local data.
+
+Future data loading should be driven by the selected client alias and environment, or by environment variables that point to local data files.
 
 ---
 
