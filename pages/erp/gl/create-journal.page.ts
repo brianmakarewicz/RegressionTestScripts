@@ -159,9 +159,7 @@ export class CreateJournalPage {
   }
 
   async saveAndClose(): Promise<void> {
-    await this.page
-      .locator('[id*="saveBatch"][id$="::popEl"]')
-      .click();
+    await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
 
     const saveAndCloseOption = this.page.getByRole("menuitem", {
       name: "Save and Close",
@@ -171,6 +169,31 @@ export class CreateJournalPage {
     await saveAndCloseOption.click();
   }
 
+  async save(): Promise<void> {
+    await this.page.getByRole("button", { name: "Save" }).click();
+  }
+
+  async completeJournal(): Promise<void> {
+    const completeButton = this.page.getByRole("button", { name: "Complete" });
+
+    await completeButton.click();
+
+    await expect(completeButton).toBeHidden({ timeout: 60_000 });
+  }
+
+  async postJournal(): Promise<void> {
+    await this.page.getByRole("button", { name: "Post" }).click();
+
+    await expect(
+      this.page.getByText(
+        "The journal requires approval before it can be posted, and has been forwarded to the approver.",
+      ),
+    ).toBeVisible({ timeout: 60_000 });
+
+    await this.page.locator('[id*="userResponsePopupDialogButtonOk"]').click();
+  }
+
+  
   //SAVED FOR FUTURE REFERENCE: This method is currently not used in the test, but it can be useful for future scenarios where we want to save the journal and create another one immediately after.
   // async saveAndCreateAnother(): Promise<void> {
   //   await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
