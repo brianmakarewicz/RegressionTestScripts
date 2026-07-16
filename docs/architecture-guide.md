@@ -135,6 +135,9 @@ RegressionTestScripts/
 │   └── erp/
 │       └── gl/
 │           └── create-journal-navigation.spec.ts
+│       └── ap/
+│           └── create-invoice.py
+│           └── validate-approve-invoice.spec.ts
 │
 ├── output/
 │   └── demo (client name)
