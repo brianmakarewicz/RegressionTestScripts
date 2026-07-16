@@ -22,4 +22,17 @@ export class FusionNavigatorPage {
       this.page.getByRole("heading", { name: "Create Journal" }),
     ).toBeVisible({ timeout: 30_000 });
   }
+
+  async goToAPInvoice( invoiceNumber: string) {
+      await this.page.getByRole('link', { name: 'Navigator' }).click();
+      await this.page.getByTitle('Payables', { exact: true }).click();
+      await this.page.getByRole('link', { name: 'Invoices' }).click();
+      await this.page.getByRole('link', { name: 'Tasks' }).click();
+      await this.page.getByRole('link', { name: /manage invoices/i }).click();
+      await this.page.getByRole('textbox', { name: 'Invoice Number' }).click();
+      await this.page.getByRole('textbox', { name: 'Invoice Number' }).fill(invoiceNumber);
+      await this.page.getByRole('button', { name: 'Search', exact: true }).click();
+      await this.page.getByRole('link', { name: invoiceNumber }).click();
+      await expect(this.page.getByRole('heading', { name: 'Invoice Details' })).toBeVisible({timeout: 30_000 });
+  }
 }
