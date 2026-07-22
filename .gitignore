@@ -17,4 +17,14 @@ test-data/**
 !test-data/.gitkeep
 !test-data/README.md
 !test-data/**/*.example.*
+!test-data/**/example.*
 !test-data/**/.gitkeep
+
+# Local output logs
+output/**
+!output/**/
+!output/.gitkeep
+!output/README.md
+!output/**/*.example.*
+!output/**/example.*
+!output/**/.gitkeep
