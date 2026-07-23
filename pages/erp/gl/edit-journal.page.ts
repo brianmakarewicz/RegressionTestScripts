@@ -25,13 +25,7 @@ export class EditJournalPage {
     await expect(approvalStatusRow).toContainText("Required");
   }
 
-  async deleteJournalBatch(journalBatchName: string): Promise<void> {
-    if (!/^TEST_BATCH_\d+$/.test(journalBatchName)) {
-      throw new Error(
-        `Refusing to delete unexpected journal batch: ${journalBatchName}`,
-      );
-    }
-
+  async deleteJournalBatch(): Promise<void> {
     await this.verifyApprovalStatusIsRequired();
 
     const batchActionsLink = this.page.getByRole("link", {
