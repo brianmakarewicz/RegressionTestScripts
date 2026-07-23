@@ -14,6 +14,15 @@ test("user can withdraw and delete a journal batch", async ({ page }) => {
     throw new Error("GL_JOURNAL_BATCH_NAME is required");
   }
 
+  const journalBatchDeletionEnabled =
+    process.env.GL_ENABLE_JOURNAL_BATCH_DELETE?.toLowerCase() === "true";
+
+  if (!journalBatchDeletionEnabled) {
+    throw new Error(
+      "GL_ENABLE_JOURNAL_BATCH_DELETE must be set to true",
+    );
+  }
+
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);
   const journalApprovalsPage = new JournalApprovalsPage(page);
@@ -41,7 +50,7 @@ test("user can withdraw and delete a journal batch", async ({ page }) => {
 
   await editJournalPage.waitForEditJournalPage();
 
-  await editJournalPage.deleteJournalBatch(journalBatchName);
+  await editJournalPage.deleteJournalBatch();
 
   await manageJournalsPage.verifyJournalBatchWasDeleted(journalBatchName);
 });

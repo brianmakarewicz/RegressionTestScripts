@@ -24,7 +24,9 @@ export class ManageJournalsPage {
     await expect(journalBatchTextbox).toBeVisible({ timeout: 30_000 });
   }
 
-  async searchForJournalBatch(journalBatchName: string): Promise<void> {
+  private async submitJournalBatchSearch(
+    journalBatchName: string,
+  ): Promise<void> {
     await this.ensureSearchPanelExpanded();
 
     const journalBatchTextbox = this.page.getByRole("textbox", {
@@ -57,6 +59,10 @@ export class ManageJournalsPage {
 
     await expect(searchButton).toBeVisible({ timeout: 30_000 });
     await searchButton.click();
+  }
+
+  async searchForJournalBatch(journalBatchName: string): Promise<void> {
+    await this.submitJournalBatchSearch(journalBatchName);
 
     const journalBatchLink = this.page.getByRole("link", {
       name: journalBatchName,
@@ -77,33 +83,7 @@ export class ManageJournalsPage {
   }
 
   async verifyJournalBatchWasDeleted(journalBatchName: string): Promise<void> {
-    await this.ensureSearchPanelExpanded();
-
-    const journalBatchTextbox = this.page.getByRole("textbox", {
-      name: "Journal Batch",
-      exact: true,
-    });
-
-    const accountingPeriodCombobox = this.page.getByRole("combobox", {
-      name: "Accounting Period",
-      exact: true,
-    });
-
-    await expect(journalBatchTextbox).toBeVisible({ timeout: 30_000 });
-    await journalBatchTextbox.fill(journalBatchName);
-
-    await expect(accountingPeriodCombobox).toBeVisible({
-      timeout: 30_000,
-    });
-
-    await accountingPeriodCombobox.fill("");
-
-    await this.page
-      .getByRole("button", {
-        name: "Search",
-        exact: true,
-      })
-      .click();
+    await this.submitJournalBatchSearch(journalBatchName);
 
     await expect(
       this.page.getByRole("link", {
