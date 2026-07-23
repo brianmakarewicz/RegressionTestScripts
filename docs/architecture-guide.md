@@ -272,16 +272,20 @@ test-data/**
 !test-data/**/
 !test-data/.gitkeep
 !test-data/README.md
+!test-data/**/*.example.*
 !test-data/**/example.*
 !test-data/**/.gitkeep
 ```
 
-Tracked test data should be limited to sanitized examples or files intentionally approved by the team. 
-The prefix "example." on the sample data files both allows the file to be committed and easily prevents it from being picked up by the code that processes the files.
+Tracked test data should be limited to sanitized examples or files intentionally approved by the team.
+Example files may use either an `example.` prefix or a `.example.` filename segment so they can be committed without being confused for real client data.
 
 Allowed examples:
 
 ```text
+test-data/manual-journal.example.csv
+test-data/manual-journal.example.json
+test-data/attachments/TestFile.example.txt
 test-data/example.manual-journal.csv
 test-data/example.manual-journal.json
 test-data/example.attachments/TestFile.txt
@@ -295,12 +299,14 @@ test-data/c001/dev/attachments/supporting-document.pdf
 test-data/client-specific-journal-data.xlsx
 ```
 
-The same logic from the test-date applies to the ouput folder:
+The same logic applies to the output folder for generated logs and run artifacts.
+
 ```gitignore
 output/**
 !output/**/
 !output/.gitkeep
 !output/README.md
+!output/**/*.example.*
 !output/**/example.*
 !output/**/.gitkeep
 ```
