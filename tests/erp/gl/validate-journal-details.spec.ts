@@ -29,7 +29,6 @@ test("user can find a journal batch and validate its details", async ({
   const editJournalPage = new EditJournalPage(page);
 
   await authentication.login();
-  await navigatorPage.goToJournalsPage();
   await navigatorPage.goToManageJournalsPage();
 
   await manageJournalsPage.searchForJournalBatch(journalData.journalBatchName);
