@@ -1,4 +1,4 @@
-import { Page, expect } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export class FusionNavigatorPage {
   constructor(private page: Page) {}
@@ -17,27 +17,7 @@ export class FusionNavigatorPage {
     });
   }
 
-  async goToCreateJournalPage() {
-    await this.page.getByRole("link", { name: "Navigator" }).click();
-
-    const generalAccounting = this.page.getByTitle("General Accounting", {
-      exact: true,
-    });
-    await expect(generalAccounting).toBeVisible({ timeout: 30_000 });
-    await generalAccounting.click();
-
-    await this.page.getByRole("link", { name: "Journals" }).click();
-    await this.page.getByRole("link", { name: "Tasks" }).click();
-    await this.page
-      .getByRole("link", { name: "Create Journal", exact: true })
-      .click();
-
-    await expect(
-      this.page.getByRole("heading", { name: "Create Journal" }),
-    ).toBeVisible({ timeout: 30_000 });
-  }
-
-  async goToManageApprovalsForJournalsPage(): Promise<void> {
+  private async openGeneralAccountingQuickActions(): Promise<Locator> {
     await this.goToHomePage();
 
     const generalAccountingTab = this.page.locator(
@@ -66,10 +46,32 @@ export class FusionNavigatorPage {
 
     await expect(expandedQuickActions).toBeVisible({ timeout: 30_000 });
 
-    const manageApprovalsLink = expandedQuickActions.getByRole("link", {
-      name: "Manage Approvals for Journals",
-      exact: true,
-    });
+    return expandedQuickActions;
+  }
+
+  async goToCreateJournalPage(): Promise<void> {
+    const expandedQuickActions =
+      await this.openGeneralAccountingQuickActions();
+
+    const createJournalLink = expandedQuickActions.locator(
+      'a[target="itemNode_create_journals"]',
+    );
+
+    await expect(createJournalLink).toBeVisible({ timeout: 30_000 });
+    await createJournalLink.click();
+
+    await expect(
+      this.page.getByRole("heading", { name: "Create Journal" }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  async goToManageApprovalsForJournalsPage(): Promise<void> {
+    const expandedQuickActions =
+      await this.openGeneralAccountingQuickActions();
+
+    const manageApprovalsLink = expandedQuickActions.locator(
+      'a[target="itemNode_journal_approvals"]',
+    );
 
     await expect(manageApprovalsLink).toBeVisible({ timeout: 30_000 });
     await manageApprovalsLink.click();
@@ -80,18 +82,12 @@ export class FusionNavigatorPage {
   }
 
   async goToManageJournalsPage(): Promise<void> {
-    const tasksLink = this.page.getByRole("link", {
-      name: "Tasks",
-      exact: true,
-    });
+    const expandedQuickActions =
+      await this.openGeneralAccountingQuickActions();
 
-    await expect(tasksLink).toBeVisible({ timeout: 30_000 });
-    await tasksLink.click();
-
-    const manageJournalsLink = this.page.getByRole("link", {
-      name: "Manage Journals",
-      exact: true,
-    });
+    const manageJournalsLink = expandedQuickActions.locator(
+      'a[target="itemNode_manage_journals"]',
+    );
 
     await expect(manageJournalsLink).toBeVisible({ timeout: 30_000 });
     await manageJournalsLink.click();

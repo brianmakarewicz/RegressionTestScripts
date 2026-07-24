@@ -1,0 +1,5 @@
+{
+  "journalBatchName": "EXAMPLE_JOURNAL_BATCH",
+  "expectedBalanceType": "Actual",
+  "expectedCategory": "Example Category"
+}
