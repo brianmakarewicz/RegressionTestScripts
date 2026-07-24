@@ -11,6 +11,33 @@ export class EditJournalPage {
     ).toBeVisible({ timeout: 30_000 });
   }
 
+  async verifyJournalBatchName(expectedBatchName: string): Promise<void> {
+    const journalBatchName = this.page.locator(
+      '[id$="showLessBatchName::content"]',
+    );
+
+    await expect(journalBatchName).toBeVisible({ timeout: 30_000 });
+    await expect(journalBatchName).toHaveText(expectedBatchName);
+  }
+
+  async verifyBalanceType(expectedBalanceType: string): Promise<void> {
+    const balanceType = this.page.locator(
+      '[id$="ShowLessBalanceType::content"]',
+    );
+
+    await expect(balanceType).toBeVisible({ timeout: 30_000 });
+    await expect(balanceType).toHaveText(expectedBalanceType);
+  }
+
+  async verifyCategory(expectedCategory: string): Promise<void> {
+    const category = this.page.locator(
+      '[id$="sis3:userJeCategoryNameInputSearch1::content"]',
+    );
+
+    await expect(category).toBeVisible({ timeout: 30_000 });
+    await expect(category).toHaveText(expectedCategory);
+  }
+
   private async verifyApprovalStatusIsRequired(): Promise<void> {
     const approvalStatusLabel = this.page.getByText("Approval Status", {
       exact: true,
