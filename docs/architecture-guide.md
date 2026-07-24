@@ -42,13 +42,13 @@ Instead, client aliases are used.
 
 | Alias | Actual Client |
 | ----- | ------------- |
-| C001  | Client 1      |
-| C002  | Client 2      |
-| C003  | Client 3      |
-| C004  | Client 4      |
-| C005  | Client 5      |
-| C006  | Client 6      |
-| C007  | Client 7      |
+| c001  | Client 1      |
+| c002  | Client 2      |
+| c003  | Client 3      |
+| c004  | Client 4      |
+| c005  | Client 5      |
+| c006  | Client 6      |
+| c007  | Client 7      |
 
 The actual client mapping should be maintained outside of GitHub.
 
@@ -97,63 +97,32 @@ npm test
 
 ---
 
-# Current Project Structure
+# High-Level Project Structure
 
 ```text
 RegressionTestScripts/
-│
-├── config/
-│   └── environment.ts
-│
-├── docs/
-│   └── architecture-guide.md
-│
-├── environments/
-│   └── .env.example
-│
-├── pages/
-│   ├── common/
-│   │   ├── fusion-login.page.ts
-│   │   └── fusion-navigator.page.ts
-│   │
-│   └── erp/
-│       └── gl/
-│           └── create-journal.page.ts
-│
-├── workflows/
-│   └── authentication.workflow.ts
-│
-├── test-data/
-│   └── demo (client name)
-│      └── example.ap_inv_[invoiceNumber].csv
-│
-├── tests/
-│   ├── authentication/
-│   │   ├── oracle-login.spec.ts
-│   │   └── test-environment.spec.ts
-│   │
-│   └── erp/
-│       └── gl/
-│           └── create-journal-navigation.spec.ts
-│       └── ap/
-│           └── create-invoice.py
-│           └── validate-approve-invoice.spec.ts
-│
-├── output/
-│   └── demo (client name)
-│      └── example.ap_inv_[invoiceNumber]_log.json
-│
-├── utils/
-│
-├── test-data/
-│
+├── config/          Environment selection and configuration
+├── docs/            Shared framework documentation
+├── environments/    Local environment files and sanitized templates
+├── pages/           Playwright Page Objects organized by application and module
+├── tests/           Authentication, ERP module, and proof-of-concept tests
+├── workflows/       Reusable multi-page business processes
+├── types/           Shared TypeScript data definitions
+├── utils/           Reusable utilities, including test-data loaders
+├── test-data/       Sanitized examples and ignored environment-specific data
+├── output/          Generated logs and test artifacts
 ├── playwright.config.ts
-│
+├── tsconfig.json
 └── package.json
 ```
 
-As the framework grows, additional folders will be organized by Oracle module (GL, AP, HCM, SCM, etc.).
-The test-data and output folders will have subfolders for each client containing example files for each. The files will be prefixed with the module they relate to (ex. "ap_inv*")
+Application-specific pages and tests are organized by product area and module. Examples include:
+
+```text
+pages/erp/gl/
+tests/erp/gl/
+tests/erp/ap/
+```
 
 ---
 
@@ -182,6 +151,18 @@ npx playwright codegen
 ```
 
 Moving the configuration file would require passing a custom configuration path for every Playwright command.
+
+---
+
+# TypeScript Configuration
+
+The root `tsconfig.json` provides shared editor settings for the Playwright and Node.js TypeScript code.
+
+It currently enables Node type information and identifies the project folders that TypeScript should inspect. This supports consistent editor validation for imports such as `node:fs` and `node:path`.
+
+Playwright continues to control test execution. Command-line type checking and CI enforcement are not currently configured.
+
+The TypeScript configuration should be reviewed as the framework and build process mature.
 
 ---
 
@@ -294,9 +275,9 @@ test-data/example.attachments/TestFile.txt
 Ignored local files:
 
 ```text
-test-data/c001/dev/manual-journal.csv
-test-data/c001/dev/attachments/supporting-document.pdf
-test-data/client-specific-journal-data.xlsx
+test-data/clients/c001/dev/gl/create-journal.json
+test-data/clients/c001/dev/gl/supporting-document.pdf
+test-data/clients/c001/test/ap/invoice-data.csv
 ```
 
 The same logic applies to the output folder for generated logs and run artifacts.
@@ -311,7 +292,7 @@ output/**
 !output/**/.gitkeep
 ```
 
-Page Objects should not read test data files directly. Page Objects should receive values from tests, workflows, or future data helpers.
+Page Objects should not read test data files directly. Page Objects should receive values from tests, workflows, or data helpers.
 
 Example:
 
@@ -322,7 +303,50 @@ await createJournalPage.chooseAttachmentFile(attachmentFilePath);
 
 This keeps the automation reusable across clients while allowing each client and environment to use its own local data.
 
-Future data loading should be driven by the selected client alias and environment, or by environment variables that point to local data files.
+---
+
+# Create Journal Test Data
+
+Create Journal tests load input data from a JSON file selected by the active client alias and environment.
+
+```text
+CLIENT_ALIAS + ENVIRONMENT
+            ↓
+Environment-specific JSON file
+            ↓
+Create Journal data loader
+            ↓
+Validated TypeScript data
+            ↓
+Playwright test
+            ↓
+Create Journal Page Object
+```
+
+Runtime data follows this convention:
+
+```text
+test-data/clients/<client-alias>/<environment>/gl/create-journal.json
+```
+
+Sanitized examples are stored under:
+
+```text
+test-data/examples/gl/
+```
+
+The test resolves and loads the data file. The data loader validates the contents and returns typed journal data. The Page Object receives the validated values and remains independent of the JSON file structure.
+
+Current validation includes:
+
+- Required fields must contain values.
+- At least two journal lines are required.
+- Each line must contain either a debit or a credit, but not both.
+- Journal amounts must be positive numbers.
+- Total debits must equal total credits.
+- The configured attachment file must exist.
+
+Real environment-specific data remains excluded from source control.
 
 ---
 
@@ -569,6 +593,8 @@ Tests and workflows should never interact with Playwright locators directly.
 
 Methods named `waitFor...` should only validate page readiness and should not change the application state.
 
+---
+
 # Synchronization Strategy
 
 The framework avoids arbitrary delays whenever possible.
@@ -591,6 +617,8 @@ Synchronization should always be based on the application state rather than elap
 
 Increasing global timeouts should be considered only after verifying that the application legitimately requires additional time to complete an operation.
 
+---
+
 # Git Workflow
 
 Development follows a feature branch workflow.
@@ -598,8 +626,8 @@ Development follows a feature branch workflow.
 ## 1. Update Main
 
 ```bash
-git checkout main
-git pull
+git switch main
+git pull origin main
 ```
 
 ---
@@ -609,7 +637,7 @@ git pull
 Example:
 
 ```bash
-git checkout -b bryan/manual-journal
+git switch -c bryan/<feature-name>
 ```
 
 Each feature should have its own branch.
@@ -635,8 +663,10 @@ Run tests until everything passes.
 ## 4. Commit Changes
 
 ```bash
-git add .
-git commit -m "Add manual journal workflow"
+git status
+git add <intended-files>
+git diff --cached --check
+git commit -m "Describe the completed change"
 ```
 
 Commits should represent one logical feature.
@@ -646,7 +676,7 @@ Commits should represent one logical feature.
 ## 5. Push Branch
 
 ```bash
-git push
+git push -u origin <branch-name>
 ```
 
 ---
@@ -714,18 +744,13 @@ Before opening a PR:
 - [ ] Branch is up to date with main.
 - [ ] If the review agent flags an issue, fix the issue and push the correction for the next automated review cycle.
 
+---
+
 # Future Enhancements
 
-Planned enhancements include:
+Potential team-level framework enhancements include:
 
-* Complete Create Journal page object
-* Manual Journal workflow
-* CSV-driven data processing
-* Looping through multiple journal entries
-* Shared Oracle utilities
-* API automation framework
-* Reporting enhancements
-* CI/CD integration
-* Parallel execution strategy
-* Test result dashboards
-* Screenshot and video capture for failed tests
+- Standardize reusable workflows, shared utilities, and test-data patterns.
+- Define when automation should use Playwright UI, Oracle APIs, or a hybrid approach.
+- Provide a functional-user interface for preparing test data and selecting scripts.
+- Introduce CI/CD, reporting, and safe parallel execution when the framework is ready.
