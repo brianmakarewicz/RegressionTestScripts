@@ -187,10 +187,19 @@ export class CreateJournalPage {
   }
 
   async saveAndClose(): Promise<void> {
-    await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
+    const saveButton = this.page.getByRole("button", {
+      name: "Save",
+      exact: true,
+    });
+
+    await expect(saveButton).toBeVisible({ timeout: 30_000 });
+    await expect(saveButton).toBeEnabled();
+
+    await saveButton.press("ArrowDown");
 
     const saveAndCloseOption = this.page.getByRole("menuitem", {
       name: "Save and Close",
+      exact: true,
     });
 
     await expect(saveAndCloseOption).toBeVisible({ timeout: 30_000 });
