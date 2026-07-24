@@ -17,16 +17,39 @@ export class FusionNavigatorPage {
     });
   }
 
-  async goToCreateJournalPage() {
-    await this.page.getByRole("link", { name: "Navigator" }).click();
+  async goToJournalsPage(): Promise<void> {
+    await this.goToHomePage();
 
-    const generalAccounting = this.page.getByTitle("General Accounting", {
-      exact: true,
-    });
-    await expect(generalAccounting).toBeVisible({ timeout: 30_000 });
-    await generalAccounting.click();
+    const generalAccountingTab = this.page.locator(
+      "#groupNode_general_accounting",
+    );
 
-    await this.page.getByRole("link", { name: "Journals" }).click();
+    await expect(generalAccountingTab).toBeVisible({ timeout: 30_000 });
+    await generalAccountingTab.click();
+
+    const generalAccountingPanel = this.page.locator(
+      "#cluster_groupNode_general_accounting",
+    );
+
+    await expect(generalAccountingPanel).toBeVisible({ timeout: 30_000 });
+
+    const journalsLink = generalAccountingPanel.locator(
+      "#itemNode_general_accounting_journals_0",
+    );
+
+    await expect(journalsLink).toBeVisible({ timeout: 30_000 });
+    await journalsLink.click();
+
+    await expect(
+      this.page.locator("h1", {
+        hasText: /^Journals$/,
+      }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  async goToCreateJournalPage(): Promise<void> {
+    await this.goToJournalsPage();
+
     await this.page.getByRole("link", { name: "Tasks" }).click();
     await this.page
       .getByRole("link", { name: "Create Journal", exact: true })
