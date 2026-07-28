@@ -117,4 +117,29 @@ export class FusionNavigatorPage {
       this.page.getByRole("heading", { name: "Invoice Details" }),
     ).toBeVisible({ timeout: 30_000 });
   }
+
+  async goToCreateAPInvoice() {
+    await this.page.getByRole("link", { name: "Navigator" }).click();
+    await this.page.getByTitle("Payables", { exact: true }).click();
+    await this.page.getByRole("link", { name: "Invoices" }).click();
+    await this.page.getByRole("link", { name: "Tasks" }).click();
+    await this.page.getByRole('link', { name: 'Create Invoice', exact: true }).click();
+    await expect(
+      this.page.getByRole('heading', { name: 'Invoice Header' }),
+    ).toBeVisible({ timeout: 30_000 });
+
+  }
+
+    async goToReceipt(PONumber: string) {
+    await this.page.getByRole('link', { name: 'Navigator' }).click();
+    await this.page.getByTitle('Procurement', { exact: true }).click();
+    await this.page.getByRole('link', { name: 'My Receipts' }).click();
+    await this.page.locator('#smart-search-component-search-bar').click();
+    await this.page.locator('#smart-search-component-search-bar').fill(PONumber);
+    await this.page.locator('#smart-search-component-search-bar').press('Enter');
+    //await this.page.getByText(`Purchase Order ${PONumber}`).click();
+    //await expect(
+    //  this.page.getByRole("heading", {name: `Purchase Order ${PONumber}`}),
+    //).toBeVisible({ timeout: 30_000 });
+  }
 }
