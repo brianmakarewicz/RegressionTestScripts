@@ -230,6 +230,37 @@ export class CreateJournalPage {
     await this.page.locator('[id*="userResponsePopupDialogButtonOk"]').click();
   }
 
+  async showJournalBatchDetails(): Promise<void> {
+    const showMoreLink = this.page.locator('a[id$="ap1:showMore"]');
+
+    await expect(showMoreLink).toBeVisible({ timeout: 30_000 });
+    await showMoreLink.click();
+  }
+
+  async openActionLog(): Promise<void> {
+    const actionLogLink = this.page.getByRole("link", {
+      name: "Action Log",
+      exact: true,
+    });
+
+    await expect(actionLogLink).toBeVisible({ timeout: 30_000 });
+    await actionLogLink.click();
+
+    await expect(
+      this.page.getByRole("table", { name: "Action Log" }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  async verifyActionLogContainsAction(expectedAction: string): Promise<void> {
+    const actionLogTable = this.page.getByRole("table", {
+      name: "Action Log",
+    });
+
+    await expect(
+      actionLogTable.getByText(expectedAction, { exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
   //SAVED FOR FUTURE REFERENCE: This method is currently not used in the test, but it can be useful for future scenarios where we want to save the journal and create another one immediately after.
   // async saveAndCreateAnother(): Promise<void> {
   //   await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
