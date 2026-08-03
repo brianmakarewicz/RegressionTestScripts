@@ -4,6 +4,8 @@ import { FusionNavigatorPage } from '../../../pages/common/fusion-navigator.page
 
 const PO_NUMBER = requiredEnv('PO_NUMBER');
 const INVOICE_NUMBER = requiredEnv('INVOICE_NUMBER');
+const ITEM_NUMBER = requiredEnv('ITEM_NUMBER');
+const QUANTITY = requiredEnv('QTY_AMOUNT');
 
 const USER_INPUT_TIMEOUT_MS = 5 * 60 * 1_000;
 
@@ -16,19 +18,48 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
   await authentication.login();
   await navigatorPage.goToAPInvoice(INVOICE_NUMBER);
 
+  /*
+   * ==========================================================
+   * VALIDATE INVOICE
+   * ==========================================================
+   */
+  await test.step('Validate invoice', async () => {
+    await openInvoiceActions(page);
+
+    await clickVisible(
+      page,
+      [
+        page.getByRole('menuitem', { name: /^Validate$/i }),
+        page.getByText('Validate', { exact: true }),
+      ],
+      'Validate',
+    );
+
+    await waitForValidationToComplete(page);
+  });
 
  /*
    * ==========================================================
    * VERIFY HOLD
    * ==========================================================
    */
+  await page.getByText('Needs revalidation', { exact: true }).click(); 
 
   await test.step('Open Invoice Summary > System Holds', async () => {
-    await openInvoiceSummary(page);
-    await openSystemHolds(page);
+    await test.step('Confirm System Holds equals 1', async () => {
+      const systemHoldsRow = page
+        .locator('table[summary="Holds"]')
+        .locator('tr')
+        .filter({
+          has: page.getByText('System Holds', { exact: true }),
+        });
+
+      await expect(systemHoldsRow).toHaveCount(1);
+      await expect(systemHoldsRow.getByRole('link')).toHaveText('1');
+      });
   });
   
-  await page.waitForTimeout(60 * 1000);
+  await page.waitForTimeout(5 * 1000);
   await navigatorPage.goToHomePage();
 
   /*
@@ -36,79 +67,21 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
    * RECEIVE PO
    * ==========================================================
    */
+  await navigatorPage.goToReceipt(PO_NUMBER);
+  await page.getByRole('checkbox', {
+    name: new RegExp(`^Purchase Order ${PO_NUMBER} ${ITEM_NUMBER}`)
+    }).check();
+  //await page.getByRole('checkbox', { name: 'Purchase Order 3003583 FC-10-F100F-108-02-12 - FortiGate-100F 1 Year FortiGuard' }).check();
+ 
+  await page.getByRole('button', { name: 'Receive with Details' }).click();
+  await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).fill(QUANTITY);
+  await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).press('Tab');
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await page.getByText('Creating receipt', { exact: true }).click();
+  await page.locator('[id="_oj204_mc"]').getByText(/^Receipt .+ created$/);
+  //await page.locator('[id="_oj204_mc"]').getByText('Receipt 40006224 created').click();
 
-  await test.step('Navigate to PO', async () => {
-    await navigatorPage.goToReceipt(PO_NUMBER);
-
-    await waitForAnyVisible(
-      page,
-      [
-        page.getByText(new RegExp(escapeRegExp(PO_NUMBER))),
-        page.getByRole('button', { name: /Receive/i }),
-      ],
-      `PO ${PO_NUMBER}`,
-    );
-  });
-
-  //ADD CLICK ON FIRST CHECKBOX
-  await page.getByRole('checkbox', { name: 'Purchase Order 3003324 Robert' }).check();
-  await page.getByRole('button', { name: 'Receive Now' }).click();
-  await page.getByRole('link', { name: 'Needs revalidation' }).click();
-  await page.getByRole('cell', { name: 'Holds2' }).click();
-  await page.getByRole('img', { name: 'Holds' }).nth(4).click();
-  await page.getByRole('cell', { name: 'System Holds' }).click();
-  await page.getByRole('cell', { name: 'System Holds' }).click({
-    modifiers: ['ControlOrMeta']
-  });
-  await page.getByRole('cell', { name: 'Holds2' }).click({
-    modifiers: ['ControlOrMeta']
-  });
-  await page.locator('[id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:pm1:r1:0:ap1:r7:1:r22:0:ta1:4:s1"]').click();
-  await page.getByRole('link', { name: '2', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Try a requisition, item, or' }).click();
-  await page.locator('#smart-search-component-search-bar').click();
-  await page.getByRole('combobox', { name: 'Try a requisition, item, or' }).fill('3003328');
-  await page.getByRole('combobox', { name: 'Try a requisition, item, or' }).press('Enter');
-  await page.getByRole('checkbox', { name: 'Purchase Order 3003328' }).check();
-  await page.getByRole('button', { name: 'Receive Now' }).click();
-  await test.step('Open Receive', async () => {
-    await clickVisible(
-      page,
-      [
-        page.getByRole('button', { name: /^Receive Now$/i }),
-        page.getByRole('link', { name: /^Receive Now$/i }),
-        page.getByText('Receive Now', { exact: true }),
-      ],
-      'Receive',
-    );
-
-    await waitForAnyVisible(
-      page,
-      [
-        page.getByLabel(/Quantity/i),
-        page.getByText(/Receive Items/i),
-        page.getByRole('button', { name: /^Submit$/i }),
-      ],
-      'Receive Items',
-    );
-  });
-
-  /*
-   * User supplies Quantity because the correct quantity depends
-   * on the PO being tested.
-   */
-  await test.step('MANUAL - Enter Quantity and Submit receipt', async () => {
-    console.log('');
-    console.log('======================================================');
-    console.log('MANUAL ACTION REQUIRED Enter the Quantity received.');
-    console.log('======================================================');
-    console.log('');
-
-    await waitForManualRcptQty(page);
-    await page.getByRole('button', { name: 'Submit' }).click();
-    await waitForReceiptSubmission(page);
-    await navigatorPage.goToHomePage();
-  });
+  await navigatorPage.goToHomePage();
 
   /*
    * ==========================================================
@@ -152,37 +125,23 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
    * VERIFY HOLD RELEASED
    * ==========================================================
    */
+  await page.getByText('Validated', { exact: true }).click(); 
 
   await test.step('Open Invoice Summary > System Holds', async () => {
-    await openInvoiceSummary(page);
-    await openSystemHolds(page);
-  });
+    await test.step('Confirm System Holds equals 0', async () => {
+      const systemHoldsRow = page
+        .locator('table[summary="Holds"]')
+        .locator('tr')
+        .filter({
+          has: page.getByText('System Holds', { exact: true }),
+        });
 
-  await test.step('Verify hold is released', async () => {
-    await expect
-      .poll(
-        async () => {
-          const matches = page.getByText(/Received Quantity/i);
-          const count = await matches.count();
+      await expect(systemHoldsRow).toHaveCount(1);
+      const systemHoldsValue = systemHoldsRow.locator('td').nth(1);
+      await expect(systemHoldsValue).toHaveText('0');
+      });
 
-          let visibleCount = 0;
 
-          for (let i = 0; i < count; i++) {
-            if (await matches.nth(i).isVisible().catch(() => false)) {
-              visibleCount++;
-            }
-          }
-
-          return visibleCount;
-        },
-        {
-          message:
-            'Waiting for hold to be released',
-          timeout: 60_000,
-          intervals: [1000, 2000, 5000],
-        },
-      )
-      .toBe(0);
 
     console.log('');
     console.log('PASS: hold has been released.');
@@ -202,6 +161,7 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
       ],
       'Save and Close',
     );
+    await page.waitForTimeout(3 * 1000);
   });
 });
 
@@ -268,91 +228,6 @@ async function waitForAnyVisible(
 ): Promise<void> {
   await findVisible(page, locators, description, timeout);
 }
-async function waitForManualRcptQty(page: Page): Promise<void> {
-  const quantity = await findVisible(
-    page,
-    [
-      page.getByRole('textbox', { name: 'Quantity' }),
-    ],
-    'Quantity',
-  );
-
-  let lastValue = '';
-  let stableSince = Date.now();
-
-  await expect
-    .poll(
-      async () => {
-        const currentValue = (await quantity.inputValue()).trim();
-
-        if (currentValue !== lastValue) {
-          lastValue = currentValue;
-          stableSince = Date.now();
-        }
-
-        const stableForMs = Date.now() - stableSince;
-
-        return currentValue.length > 0 && stableForMs >= 10000;
-      },
-      {
-        message: 'Waiting for quantity to be entered',
-        timeout: USER_INPUT_TIMEOUT_MS,
-        intervals: [500],
-      },
-    )
-    .toBe(true);
-}
-
-async function waitForReceiptSubmission(page: Page): Promise<void> {
- await expect
-    .poll(
-      async () => {
-        const confirmationPatterns = [
-          /receipt.*created/i,
-          /receipt.*submitted/i,
-          /items.*received/i,
-          /received successfully/i,
-          /confirmation/i,
-        ];
-
-        for (const pattern of confirmationPatterns) {
-          const element = page.getByText(pattern).first();
-
-          if (await element.isVisible().catch(() => false)) {
-            return true;
-          }
-        }
-
-        /*
-         * If the receipt page closes after submission,
-         * the Submit button should disappear.
-         */
-        const submitButton = page
-          .getByRole('button', { name: /^Submit$/i })
-          .first();
-
-        return !(await submitButton.isVisible().catch(() => false));
-      },
-      {
-        message:
-          'Waiting for the user to enter Quantity and submit the receipt',
-        timeout: USER_INPUT_TIMEOUT_MS,
-        intervals: [500, 1000, 2000],
-      },
-    )
-    .toBe(true);
-
-  /*
-   * Handle the confirmation OK automatically if it appears.
-   */
-  const okButton = page
-    .getByRole('button', { name: /^OK$/i })
-    .first();
-
-  if (await okButton.isVisible().catch(() => false)) {
-    await okButton.click();
-  }
-}
 
 async function openInvoiceActions(page: Page): Promise<void> {
   await clickVisible(
@@ -369,7 +244,7 @@ async function openInvoiceActions(page: Page): Promise<void> {
 
 async function waitForValidationToComplete(page: Page): Promise<void> {
   const successMessage = page
-    .getByText(/validated|validation completed|invoice validation/i)
+    .getByText(/validated|needs revalidation/i)
     .first();
 
   const successFound = await successMessage
@@ -396,49 +271,6 @@ async function waitForValidationToComplete(page: Page): Promise<void> {
   );
 }
 
-async function openInvoiceSummary(page: Page): Promise<void> {
-  await clickVisible(
-    page,
-    [
-      page.getByRole('button', { name: /Needs Validation/i }),
-      page.getByRole('link', { name: /Needs Validation/i }),
-      page.getByText(/Needs Validation/i, { exact: true }),
-    ],
-    'Invoice Summary',
-  );
-
-  await waitForAnyVisible(
-    page,
-    [
-      page.getByText(/System Holds/i),
-      page.getByRole('dialog'),
-    ],
-    'Invoice Summary',
-  );
-}
-
-async function openSystemHolds(page: Page): Promise<void> {
-  await clickVisible(
-    page,
-    [
-      page.getByRole('link', { name: /System Holds/i }),
-      page.getByRole('button', { name: /System Holds/i }),
-      page.getByText(/System Holds/i, { exact: true }),
-    ],
-    'System Holds',
-  );
-
-  await waitForAnyVisible(
-    page,
-    [
-      page.getByText(/Hold Name/i),
-      page.getByText(/Received Quantity/i),
-      page.getByText(/No data to display/i),
-      page.getByText(/System Holds/i),
-    ],
-    'System Holds details',
-  );
-}
 
 async function closeDialogIfPresent(page: Page): Promise<void> {
   const dialog = page.getByRole('dialog').last();

@@ -3,19 +3,50 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export class FusionNavigatorPage {
   constructor(private page: Page) {}
 
-  async goToHomePage(): Promise<void> {
-    const homeLink = this.page.getByRole("link", {
-      name: "Home",
-      exact: true,
-    });
+async goToHomePage(): Promise<void> {
+  const classicHomeLink = this.page.locator('[id="_FOpt1:_UIShome"]');
 
-    await expect(homeLink).toBeVisible({ timeout: 30_000 });
-    await homeLink.click();
+  const redwoodHomeLink = this.page.locator(
+    '#ojSpSimpleUIShellGlobalHeader_HOa1'
+  );
 
-    await expect(this.page.locator("#clusters_container")).toBeVisible({
+  let homePageType: 'classic' | 'redwood' | null = null;
+
+  await expect
+    .poll(
+      async () => {
+        if (await classicHomeLink.isVisible()) {
+          homePageType = 'classic';
+          return true;
+        }
+
+        if (await redwoodHomeLink.isVisible()) {
+          homePageType = 'redwood';
+          return true;
+        }
+
+        return false;
+      },
+      {
+        message: 'Waiting for either the Classic or Redwood Home link',
+        timeout: 30_000,
+      }
+    )
+    .toBe(true);
+
+  if (homePageType === 'classic') {
+    await classicHomeLink.click();
+
+    await expect(this.page.locator('#clusters_container')).toBeVisible({
       timeout: 30_000,
     });
+  } else {
+    await redwoodHomeLink.click();
+
+    // Allow the Redwood Home action to complete.
+    await this.page.waitForLoadState('domcontentloaded');
   }
+}
 
   private async openGeneralAccountingQuickActions(): Promise<Locator> {
     await this.goToHomePage();
@@ -101,6 +132,7 @@ export class FusionNavigatorPage {
 
   async goToAPInvoice(invoiceNumber: string) {
     await this.page.getByRole("link", { name: "Navigator" }).click();
+    await this.page.waitForTimeout(2 * 1000);
     await this.page.getByTitle("Payables", { exact: true }).click();
     await this.page.getByRole("link", { name: "Invoices" }).click();
     await this.page.getByRole("link", { name: "Tasks" }).click();
@@ -112,6 +144,7 @@ export class FusionNavigatorPage {
     await this.page
       .getByRole("button", { name: "Search", exact: true })
       .click();
+    await this.page.waitForTimeout(3 * 1000);
     await this.page.getByRole("link", { name: invoiceNumber }).click();
     await expect(
       this.page.getByRole("heading", { name: "Invoice Details" }),
@@ -134,12 +167,8 @@ export class FusionNavigatorPage {
     await this.page.getByRole('link', { name: 'Navigator' }).click();
     await this.page.getByTitle('Procurement', { exact: true }).click();
     await this.page.getByRole('link', { name: 'My Receipts' }).click();
-    await this.page.locator('#smart-search-component-search-bar').click();
-    await this.page.locator('#smart-search-component-search-bar').fill(PONumber);
-    await this.page.locator('#smart-search-component-search-bar').press('Enter');
-    //await this.page.getByText(`Purchase Order ${PONumber}`).click();
-    //await expect(
-    //  this.page.getByRole("heading", {name: `Purchase Order ${PONumber}`}),
-    //).toBeVisible({ timeout: 30_000 });
+    await this.page.locator('#smart-search-component-search-bar').getByRole('combobox').fill(PONumber);
+    await this.page.locator('div').filter({ hasText: PONumber }).nth(3).click();
+    await this.page.waitForTimeout(3 * 1000);
   }
 }
