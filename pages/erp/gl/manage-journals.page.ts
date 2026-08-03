@@ -1,14 +1,22 @@
 import { expect, type Page } from "@playwright/test";
 
+/**
+ * Represents the Oracle Fusion Manage Journals page.
+ *
+ * Provides reusable methods for interacting with journal batches and
+ * related controls on the page.
+ */
 export class ManageJournalsPage {
   constructor(private page: Page) {}
 
+  // Search panel preparation
   private async ensureSearchPanelExpanded(): Promise<void> {
     const journalBatchTextbox = this.page.getByRole("textbox", {
       name: "Journal Batch",
       exact: true,
     });
 
+    // Oracle may collapse the search panel after returning from another action.
     if (await journalBatchTextbox.isVisible()) {
       return;
     }
@@ -24,6 +32,7 @@ export class ManageJournalsPage {
     await expect(journalBatchTextbox).toBeVisible({ timeout: 30_000 });
   }
 
+  // Shared journal batch search
   private async submitJournalBatchSearch(
     journalBatchName: string,
   ): Promise<void> {
@@ -53,6 +62,7 @@ export class ManageJournalsPage {
       timeout: 30_000,
     });
 
+    // Clear the period so a previous or default value does not restrict the search.
     await accountingPeriodCombobox.fill("");
 
     await expect(accountingPeriodCombobox).toHaveValue("");
@@ -61,6 +71,7 @@ export class ManageJournalsPage {
     await searchButton.click();
   }
 
+  // Journal batch result actions
   async searchForJournalBatch(journalBatchName: string): Promise<void> {
     await this.submitJournalBatchSearch(journalBatchName);
 
@@ -69,6 +80,7 @@ export class ManageJournalsPage {
       exact: true,
     });
 
+    // Confirm the search returned the exact journal batch requested by the test.
     await expect(journalBatchLink).toBeVisible({ timeout: 30_000 });
   }
 
@@ -79,12 +91,15 @@ export class ManageJournalsPage {
     });
 
     await expect(journalBatchLink).toBeVisible({ timeout: 30_000 });
+    // Open the selected batch on the Edit Journal page.
     await journalBatchLink.click();
   }
 
+  // Journal batch deletion verification
   async verifyJournalBatchWasDeleted(journalBatchName: string): Promise<void> {
     await this.submitJournalBatchSearch(journalBatchName);
 
+    // The deleted batch must no longer be available as a search result.
     await expect(
       this.page.getByRole("link", {
         name: journalBatchName,
@@ -92,6 +107,7 @@ export class ManageJournalsPage {
       }),
     ).toBeHidden({ timeout: 30_000 });
 
+    // Confirm the empty grid is a completed search result, not a loading state.
     await expect(
       this.page.getByRole("cell", {
         name: "No results found.",

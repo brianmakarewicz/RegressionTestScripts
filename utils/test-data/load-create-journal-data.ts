@@ -6,6 +6,7 @@ import {
   type JournalBalanceType,
 } from "../../types/erp/gl/create-journal-data";
 
+// Runtime JSON shape and primitive field readers
 type JsonObject = Record<string, unknown>;
 
 function isJsonObject(value: unknown): value is JsonObject {
@@ -52,6 +53,7 @@ function readOptionalAmount(
   }
 
   const amount = value.trim();
+  // Ignore display separators when validating the numeric value.
   const numericAmount = Number(amount.replaceAll(",", ""));
 
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
@@ -61,6 +63,7 @@ function readOptionalAmount(
   return amount;
 }
 
+/** Validates and converts the journal line array from untrusted JSON input. */
 function readJournalLines(
   value: unknown,
   errors: string[],
@@ -92,6 +95,7 @@ function readJournalLines(
       errors,
     );
 
+    // Each journal line must affect one side of the accounting entry only.
     if ((debit === undefined) === (credit === undefined)) {
       errors.push(
         `${fieldName} must provide either debit or credit, but not both`,
@@ -115,6 +119,7 @@ function readJournalLines(
   });
 }
 
+/** Confirms that the complete journal has equal debit and credit totals. */
 function validateBalancedJournal(
   lines: CreateJournalLineData[],
   errors: string[],
@@ -133,6 +138,7 @@ function validateBalancedJournal(
   if (
     Number.isFinite(totalDebits) &&
     Number.isFinite(totalCredits) &&
+    // Allow only insignificant floating-point differences between the totals.
     Math.abs(totalDebits - totalCredits) > 0.000_001
   ) {
     errors.push(
@@ -141,11 +147,15 @@ function validateBalancedJournal(
   }
 }
 
+/**
+ * Loads and validates environment-specific Create Journal data before UI work.
+ */
 export function loadCreateJournalData(filePath: string): CreateJournalData {
   if (!filePath.trim()) {
     throw new Error("Create Journal data file path is required");
   }
 
+  // Treat relative test-data paths as relative to the repository root.
   const resolvedFilePath = path.resolve(process.cwd(), filePath);
 
   if (!fs.existsSync(resolvedFilePath)) {
@@ -169,6 +179,7 @@ export function loadCreateJournalData(filePath: string): CreateJournalData {
     throw new Error("Create Journal data must be a JSON object");
   }
 
+  // Collect field-level issues so the caller receives one complete error report.
   const errors: string[] = [];
   const lines = readJournalLines(parsedData.lines, errors);
 
@@ -201,6 +212,7 @@ export function loadCreateJournalData(filePath: string): CreateJournalData {
 
   validateBalancedJournal(lines, errors);
 
+  // Validate the attachment before a browser session attempts to upload it.
   if (journalData.attachmentFilePath) {
     const attachmentPath = path.resolve(
       process.cwd(),
@@ -212,6 +224,7 @@ export function loadCreateJournalData(filePath: string): CreateJournalData {
     }
   }
 
+  // Throw once after all independent validation rules have been evaluated.
   if (errors.length > 0) {
     throw new Error(
       `Create Journal data validation failed:\n- ${errors.join("\n- ")}`,

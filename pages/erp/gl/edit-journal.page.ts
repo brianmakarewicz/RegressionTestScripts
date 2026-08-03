@@ -1,8 +1,15 @@
 import { expect, type Page } from "@playwright/test";
 
+/**
+ * Represents an existing journal batch opened from Manage Journals.
+ *
+ * This page object validates journal details and performs controlled
+ * actions against the selected journal batch.
+ */
 export class EditJournalPage {
   constructor(private page: Page) {}
 
+  // Page readiness and journal detail validation
   async waitForEditJournalPage(): Promise<void> {
     await expect(
       this.page.locator("h1", {
@@ -52,7 +59,9 @@ export class EditJournalPage {
     await expect(approvalStatusRow).toContainText("Required");
   }
 
+  // Journal batch deletion
   async deleteJournalBatch(): Promise<void> {
+    // Only journals requiring approval are eligible for this deletion flow.
     await this.verifyApprovalStatusIsRequired();
 
     const batchActionsLink = this.page.getByRole("link", {
@@ -78,6 +87,7 @@ export class EditJournalPage {
       },
     );
 
+    // Oracle requires final confirmation before deleting the journal batch.
     await expect(confirmationMessage).toBeVisible({ timeout: 30_000 });
 
     const yesButton = this.page.getByRole("button", {
@@ -88,6 +98,7 @@ export class EditJournalPage {
     await expect(yesButton).toBeVisible({ timeout: 30_000 });
     await yesButton.click();
 
+    // Successful deletion returns the user to Manage Journals.
     await expect(
       this.page.locator("h1", {
         hasText: /^Manage Journals$/,

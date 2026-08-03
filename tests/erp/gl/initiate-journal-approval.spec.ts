@@ -9,6 +9,7 @@ import { loadCreateJournalData } from "../../../utils/test-data/load-create-jour
 test("user can initiate journal approval with posting", async ({ page }) => {
   test.setTimeout(180_000);
 
+  // Load environment-specific scenario data and generate a unique batch name.
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
@@ -20,13 +21,16 @@ test("user can initiate journal approval with posting", async ({ page }) => {
   const journalData = loadCreateJournalData(journalDataFilePath);
   const journalBatchName = `${journalData.batchNamePrefix}_${Date.now()}`;
 
+  // Initialize the workflow and page objects used by the scenario.
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);
   const createJournalPage = new CreateJournalPage(page);
 
+  // Authenticate and navigate to Create Journal.
   await authentication.login();
   await navigatorPage.goToCreateJournalPage();
 
+  // Enter the journal batch and header information.
   await createJournalPage.waitForCreateJournalPage();
   await createJournalPage.enterJournalBatchName(journalBatchName);
   await createJournalPage.enterBatchDescription(journalData.batchDescription);
@@ -38,6 +42,7 @@ test("user can initiate journal approval with posting", async ({ page }) => {
   await createJournalPage.selectLedger(journalData.ledger);
   await createJournalPage.selectCategory(journalData.category);
 
+  // Enter the balanced debit and credit lines supplied by the data file.
   for (const [index, line] of journalData.lines.entries()) {
     const lineNumber = index + 1;
 
@@ -57,11 +62,13 @@ test("user can initiate journal approval with posting", async ({ page }) => {
     );
   }
 
+  // Submit the completed journal for approval with posting requested.
   await createJournalPage.save();
   await createJournalPage.completeJournal();
   await createJournalPage.postJournal();
   await createJournalPage.showJournalBatchDetails();
   await createJournalPage.openActionLog();
+  // Confirm Oracle recorded the expected approval action.
   await createJournalPage.verifyActionLogContainsAction(
     "Sent for approval with posting",
   );
