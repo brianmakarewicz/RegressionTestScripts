@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { type ValidateJournalDetailsData } from "../../types/erp/gl/validate-journal-details-data";
 
+// Runtime JSON shape and primitive field readers
 type JsonObject = Record<string, unknown>;
 
 function isJsonObject(value: unknown): value is JsonObject {
@@ -21,6 +22,9 @@ function readRequiredString(
   return value.trim();
 }
 
+/**
+ * Loads and validates environment-specific journal-detail expectations before UI work.
+ */
 export function loadValidateJournalDetailsData(
   filePath: string,
 ): ValidateJournalDetailsData {
@@ -28,6 +32,7 @@ export function loadValidateJournalDetailsData(
     throw new Error("Validate Journal Details data file path is required");
   }
 
+  // Treat relative test-data paths as relative to the repository root.
   const resolvedFilePath = path.resolve(process.cwd(), filePath);
 
   if (!fs.existsSync(resolvedFilePath)) {
@@ -51,6 +56,7 @@ export function loadValidateJournalDetailsData(
     throw new Error("Validate Journal Details data must be a JSON object");
   }
 
+  // Collect field-level issues so the caller receives one complete error report.
   const errors: string[] = [];
 
   const journalData: ValidateJournalDetailsData = {
@@ -71,6 +77,7 @@ export function loadValidateJournalDetailsData(
     ),
   };
 
+  // Throw once after all independent validation rules have been evaluated.
   if (errors.length > 0) {
     throw new Error(
       `Validate Journal Details data validation failed:\n- ${errors.join("\n- ")}`,

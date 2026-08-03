@@ -1,8 +1,16 @@
 import { expect, type Page } from "@playwright/test";
 
+/**
+ * Represents the Oracle Fusion Create Journal page.
+ *
+ * This page object encapsulates all UI interactions required to create,
+ * process, and validate manual journals so that test scenarios remain
+ * focused on business workflows rather than page implementation details.
+ */
 export class CreateJournalPage {
   constructor(private page: Page) {}
 
+  // Journal batch and header fields
   async waitForCreateJournalPage(): Promise<void> {
     await expect(
       this.page.getByRole("heading", { name: "Create Journal" }),
@@ -26,6 +34,7 @@ export class CreateJournalPage {
   ): Promise<void> {
     const balanceTypeSelect = this.page.getByLabel("Balance Type");
 
+    // Oracle represents the visible balance types with numeric option values.
     const balanceTypeValue = balanceType === "Actual" ? "0" : "1";
 
     await balanceTypeSelect.selectOption(balanceTypeValue);
@@ -108,6 +117,7 @@ export class CreateJournalPage {
     await expect(categoryTextbox).toHaveValue(category);
   }
 
+  // Journal line entry
   async enterJournalLineAccount(
     lineNumber: number,
     account: string,
@@ -116,6 +126,7 @@ export class CreateJournalPage {
       name: new RegExp(`^Expand ${lineNumber}\\b`),
     });
 
+    // Activating the account cell causes Oracle's editable textbox to appear.
     await lineRow.locator("td").nth(3).click();
 
     const accountTextbox = lineRow.getByRole("textbox", {
@@ -126,8 +137,6 @@ export class CreateJournalPage {
     await expect(accountTextbox).toBeVisible({ timeout: 30_000 });
     await accountTextbox.fill(account);
     await expect(accountTextbox).toHaveValue(account);
-
-    // await accountTextbox.press("Tab");
   }
 
   async enterJournalLineDebit(
@@ -138,6 +147,7 @@ export class CreateJournalPage {
       name: new RegExp(`^Expand ${lineNumber}\\b`),
     });
 
+    // The debit editor is activated by selecting the debit column in the row.
     await lineRow.locator("td").nth(4).click();
 
     const debitTextbox = this.page.getByRole("textbox", {
@@ -157,6 +167,7 @@ export class CreateJournalPage {
       name: new RegExp(`^Expand ${lineNumber}\\b`),
     });
 
+    // The credit editor is activated by selecting the credit column in the row.
     await lineRow.locator("td").nth(5).click();
 
     const creditTextbox = this.page.getByRole("textbox", {
@@ -186,6 +197,7 @@ export class CreateJournalPage {
     await expect(descriptionTextbox).toHaveValue(description);
   }
 
+  // Journal processing actions
   async saveAndClose(): Promise<void> {
     const saveButton = this.page.getByRole("button", {
       name: "Save",
@@ -195,6 +207,7 @@ export class CreateJournalPage {
     await expect(saveButton).toBeVisible({ timeout: 30_000 });
     await expect(saveButton).toBeEnabled();
 
+    // Save is a split button; ArrowDown opens its additional save options.
     await saveButton.press("ArrowDown");
 
     const saveAndCloseOption = this.page.getByRole("menuitem", {
@@ -215,12 +228,14 @@ export class CreateJournalPage {
 
     await completeButton.click();
 
+    // The Complete button disappears after Oracle finishes the transition.
     await expect(completeButton).toBeHidden({ timeout: 60_000 });
   }
 
   async postJournal(): Promise<void> {
     await this.page.getByRole("button", { name: "Post" }).click();
 
+    // Posting an approval-required journal submits it for approval with posting.
     await expect(
       this.page.getByText(
         "The journal requires approval before it can be posted, and has been forwarded to the approver.",
@@ -230,7 +245,9 @@ export class CreateJournalPage {
     await this.page.locator('[id*="userResponsePopupDialogButtonOk"]').click();
   }
 
+  // Journal approval history
   async showJournalBatchDetails(): Promise<void> {
+    // The ID suffix targets the batch-level Show More link, not the journal one.
     const showMoreLink = this.page.locator('a[id$="ap1:showMore"]');
 
     await expect(showMoreLink).toBeVisible({ timeout: 30_000 });
@@ -246,12 +263,14 @@ export class CreateJournalPage {
     await expect(actionLogLink).toBeVisible({ timeout: 30_000 });
     await actionLogLink.click();
 
+    // Wait for the ADF table to render before attempting action validation.
     await expect(
       this.page.getByRole("table", { name: "Action Log" }),
     ).toBeVisible({ timeout: 30_000 });
   }
 
   async verifyActionLogContainsAction(expectedAction: string): Promise<void> {
+    // Scope the exact action text to the Action Log to avoid unrelated matches.
     const actionLogTable = this.page.getByRole("table", {
       name: "Action Log",
     });
@@ -260,18 +279,4 @@ export class CreateJournalPage {
       actionLogTable.getByText(expectedAction, { exact: true }),
     ).toBeVisible({ timeout: 30_000 });
   }
-
-  //SAVED FOR FUTURE REFERENCE: This method is currently not used in the test, but it can be useful for future scenarios where we want to save the journal and create another one immediately after.
-  // async saveAndCreateAnother(): Promise<void> {
-  //   await this.page.locator('[id*="saveBatch"][id$="::popEl"]').click();
-
-  //   const saveAndCreateAnotherOption = this.page.getByRole("menuitem", {
-  //     name: "Save and Create Another",
-  //   });
-
-  //   await expect(saveAndCreateAnotherOption).toBeVisible({ timeout: 30_000 });
-  //   await saveAndCreateAnotherOption.click();
-
-  //   await this.waitForCreateJournalPage();
-  // }
 }

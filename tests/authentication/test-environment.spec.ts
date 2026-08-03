@@ -1,6 +1,7 @@
 import { test } from '@playwright/test';
 import { env } from '../../config/environment';
 
+// Diagnostic smoke test for the selected client and environment configuration.
 test('loads selected environment configuration', async () => {
   console.log('Client:', env.clientAlias);
   console.log('Environment:', env.environment);
