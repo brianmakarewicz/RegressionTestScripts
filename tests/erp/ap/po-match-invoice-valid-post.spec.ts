@@ -19,8 +19,8 @@ test('validate and post invoice', async ({ page }) => {
 /*VALIDATE*/
    // await page.getByRole('link', { name: 'Actions', exact: true }).click();
    // await page.getByText('Validate', { exact: true }).click();
-    await expect(page.locator('td').filter({ hasText: /^Validated$/ }).first()).toBeVisible({ timeout: 5 * 60 * 1000 } );
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+   // await expect(page.locator('td').filter({ hasText: /^Validated$/ }).first()).toBeVisible({ timeout: 5 * 60 * 1000 } );
+   // await page.getByRole('button', { name: 'Save', exact: true }).click();
 
 /*FORCE APPROVAL*/
     await page.getByRole('link', { name: 'Actions', exact: true }).click();

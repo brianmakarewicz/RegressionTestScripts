@@ -1,14 +1,27 @@
+import path from "node:path";
 import { expect, Locator, Page, test } from '@playwright/test';
+import { env } from "../../../config/environment";
 import { AuthenticationWorkflow } from '../../../workflows/authentication.workflow';
 import { FusionNavigatorPage } from '../../../pages/common/fusion-navigator.page';
+import { loadCreatePOInvData } from "../../../utils/test-data/load-create-po-inv-data.ts";
 
-const PO_NUMBER = requiredEnv('PO_NUMBER');
-const INVOICE_NUMBER = requiredEnv('INVOICE_NUMBER');
+const PREFIX = requiredEnv('PREFIX');
 
 const USER_INPUT_TIMEOUT_MS = 5 * 60 * 1_000;
 
 test('Create PO match invoice', async ({ page }) => {
   test.setTimeout(15 * 60 * 1_000);
+
+    const dataFilePath = path.join(
+    "test-data",
+    "clients",
+    env.clientAlias,
+    env.environment,
+    "ap",
+    "po_match_inv.json",
+  );
+  const invData = loadCreatePOInvData(dataFilePath);
+  const invNumber = `${PREFIX}${invData.invNumber}`;
 
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);
@@ -21,115 +34,113 @@ test('Create PO match invoice', async ({ page }) => {
    * CREATE INVOICE
    * ==========================================================
    */
-
-  await test.step('Enter PO Number and Invoice Number', async () => {
-    await page.getByRole('combobox', { name: 'Identifying PO' }).click();
-    await page.getByRole('combobox', { name: 'Identifying PO' }).fill(PO_NUMBER);
+  //Fill out Header
+    await page.getByRole('combobox', { name: 'Identifying PO' }).fill(invData.poNumber);
     await page.getByRole('combobox', { name: 'Identifying PO' }).press('Enter');
-    
-    await page.getByRole('textbox', { name: 'Number' }).click();
-    await page.getByRole('textbox', { name: 'Number' }).fill(INVOICE_NUMBER);
-  });
-
-  //Clicks to fill out header
-   /*  await page.getByRole('textbox', { name: 'Amount' }).click();
-    await page.getByRole('textbox', { name: 'Amount' }).fill('500');
-    await page.getByRole('textbox', { name: 'Description' }).click();
-    await page.getByTitle('Select Date').first().click();
-    await page.getByRole('gridcell', { name: '1', exact: true }).click();
-    await page.getByTitle('Select Date').nth(1).click();
-    await page.getByRole('button', { name: 'Next Month' }).click();
-    await page.getByRole('gridcell', { name: '1' }).first().click();
-    await page.getByRole('textbox', { name: 'Description' }).click();
-    await page.getByRole('textbox', { name: 'Description' }).fill('test po match'); */
-
-  await test.step('MANUAL - Enter Invoice Header', async () => {
-    console.log('');
-    console.log('======================================================');
-    console.log('MANUAL ACTION REQUIRED: Enter Invoice Header Details');
-    console.log('The script will continue once Requestor contains a value.');
-    console.log('======================================================');
-    console.log('');
-
-    await waitForManualInvoiceHeader(page);
-  });
-
+    await page.getByRole('textbox', { name: 'Number' }).fill(invNumber);
+    await page.getByRole('textbox', { name: 'Amount' }).click();
+    if (invData.amount !== undefined) {
+        await page.getByRole('textbox', { name: 'Amount' })
+            .fill(String(invData.amount));
+        }
+    await page.getByRole('textbox', { name: 'Description' }).fill(invData.description);
+    if (invData.invDate !== undefined) {
+        await page.getByRole('textbox', { name: 'Date', exact: true })
+            .fill(String(invData.invDate));
+        }
+    await page.getByRole('combobox', { name: 'Requester' }).fill(invData.requester);
+    await page.getByRole('combobox', { name: 'Requester' }).press('Enter');
+  
   /*
    * ==========================================================
    * MATCH INVOICE TO PO
    * ==========================================================
    */
 
-//Restart at Match Invoice Lines "Go" button
+//Match Invoice Lines "Go" button
     await page.getByRole('link', { name: 'Go', exact: true }).click({ timeout: 5 * 60 * 1000 });
  
     const okButton = page.getByRole('button', {
     name: 'OK',
     exact: true
     });
-    
-    await test.step('MANUAL - Select PO row & enter quantity & unit price', async () => {
-    console.log('');
-    console.log('======================================================');
-    console.log('MANUAL ACTION REQUIRED: Enter Match detail');
-    console.log('The script will continue once match window is closed.');
-    console.log('======================================================');
-    console.log('');
-  });
-
-//  await page.locator('[id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:pm1:r1:0:ap1:r11:1:at1:_ATp:ta1:0:sb1::Label0"]').click();
-//  await page.getByRole('textbox', { name: 'Unit Price' }).click();
-//  await page.getByRole('textbox', { name: 'Unit Price' }).fill('500');
-//  await page.getByRole('button', { name: 'Apply' }).click();
-//  await page.getByRole('button', { name: 'OK' }).click();
-
 
   // Wait until the match window is  open
   await expect(okButton).toBeVisible({
     timeout: 30_000
   });
+  
+  //check and enter quantity for the provided PO Line Num. 
+  // lineType condition excludes lines in file with a value since they are not eligible for the po match window
+    const resultsTable = page.getByRole('table', {
+    name: 'Search Results',
+    });
 
-  // Pause automation here until user clicks OK,
-  // or fail after 5 minutes.
+    for (const line of invData.lines) {
+        if (!line.lineType) {
+            const row = resultsTable
+            .locator(':scope > tbody > tr')
+            .filter({
+                has: page.getByRole('link', {
+                name: invData.poNumber,
+                exact: true,
+                }),
+            })
+            .filter({
+                has: page.getByRole('cell', {
+                name: line.poLineNumber,
+                exact: true,
+                }),
+            });
+
+            await expect(row).toHaveCount(1);
+
+            const checkbox = row.getByRole('checkbox');
+            const checkboxLabel = row.locator(
+            `label[for="${await checkbox.getAttribute('id')}"]`,
+            );
+
+            if (!(await checkbox.isChecked())) {
+            await checkboxLabel.click();
+            }
+
+            await expect(checkbox).toBeChecked()
+            await row.getByRole('textbox', { name: 'Quantity' }).fill(line.quantity);
+
+            await page.getByRole('button', { name: 'Apply' }).click();
+            await page.getByRole('button', { name: 'OK' }).click();
+
+            //Edit line if tracked as asset - not currently used to be added if needed
+          /*  if (line.trackAsAsset = "Y") {
+                await page.getByRole('link', { name: 'Asset' }).click();
+                await page.locator('[id="_FOpt1:_FOr1:0:_FONSr2:0:MAnt2:1:pm1:r1:0:ap1:at2:_ATp:ta2:0:sb5::Label0"]').click();
+                await page.getByRole('textbox', { name: 'Serial Number' }).click();
+                await page.getByRole('textbox', { name: 'Serial Number' }).fill('xyz');
+                await page.getByRole('textbox', { name: 'Asset Category' }).click();
+                await page.getByRole('textbox', { name: 'Asset Category' }).fill('COMPUTER EQUPMENT');
+                await page.getByRole('textbox', { name: 'Asset Category' }).press('Enter');
+                await page.getByRole('combobox', { name: 'Minor' }).click();
+                await page.getByRole('combobox', { name: 'Minor' }).fill('NONE');
+                await page.getByRole('combobox', { name: 'Minor' }).press('Enter');
+            }*/
+
+        }
+    }
+
+    await page.getByRole('button', { name: 'Apply' }).click();
+    await page.getByRole('button', { name: 'OK' }).click();
+
   await expect(okButton).not.toBeVisible({
     timeout: 5 * 60 * 1000
   });
 
+  await page.waitForTimeout(5 * 1000);
+
   /*
    * ==========================================================
-   * SAVE AND VALIDATE
+   * SAVE AND CLOSE (validation occurs in subsequent scripts)
    * ==========================================================
    */
-
-  await test.step('Save invoice', async () => {
-    await clickVisible(
-      page,
-      [
-        page.getByRole('button', { name: /^Save$/i }),
-        page.getByText('Save', { exact: true }),
-      ],
-      'Save',
-    );
-
-    await waitForSaveToComplete(page);
-  });
-
-  await test.step('Validate invoice', async () => {
-    await openInvoiceActions(page);
-
-    await clickVisible(
-      page,
-      [
-        page.getByRole('menuitem', { name: /^Validate$/i }),
-        page.getByText('Validate', { exact: true }),
-      ],
-      'Validate',
-    );
-
-    await waitForValidationToComplete(page);
-  });
-
- 
 
   await test.step('Save and Close', async () => {
     await closeDialogIfPresent(page);
@@ -143,6 +154,8 @@ test('Create PO match invoice', async ({ page }) => {
       'Save and Close',
     );
   });
+
+    await page.waitForTimeout(5 * 1000);
 });
 
 

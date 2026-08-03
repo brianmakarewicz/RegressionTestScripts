@@ -5,7 +5,7 @@ import { FusionNavigatorPage } from '../../../pages/common/fusion-navigator.page
 const PO_NUMBER = requiredEnv('PO_NUMBER');
 const INVOICE_NUMBER = requiredEnv('INVOICE_NUMBER');
 const ITEM_NUMBER = requiredEnv('ITEM_NUMBER');
-const QUANTITY = requiredEnv('QTY_AMOUNT');
+const QUANTITY = requiredEnv('QUANTITY');
 
 const USER_INPUT_TIMEOUT_MS = 5 * 60 * 1_000;
 
