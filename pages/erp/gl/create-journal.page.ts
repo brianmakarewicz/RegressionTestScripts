@@ -150,7 +150,17 @@ export class CreateJournalPage {
 
     await expect(accountTextbox).toBeVisible({ timeout: 30_000 });
     await accountTextbox.fill(account);
+    await accountTextbox.press("Tab");
+
+    // Confirm Oracle retained the account after validating the combination.
     await expect(accountTextbox).toHaveValue(account);
+
+    await expect(
+      this.page.getByText(
+        "Attribute CodeCombinationId in JournalLineEO is required.",
+        { exact: true },
+      ),
+    ).toBeHidden({ timeout: 30_000 });
   }
 
   async enterJournalLineDebit(

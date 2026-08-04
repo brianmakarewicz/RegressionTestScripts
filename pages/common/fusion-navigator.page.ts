@@ -13,18 +13,58 @@ export class FusionNavigatorPage {
    * Returns to the Oracle Fusion Home page and waits for its content to load.
    */
   async goToHomePage(): Promise<void> {
-    const homeLink = this.page.getByRole("link", {
+    const classicHomeLink = this.page.getByRole("link", {
       name: "Home",
       exact: true,
     });
+    const classicHomeContent = this.page.locator("#clusters_container");
+    const redwoodHomeLink = this.page.locator(
+      "#ojSpSimpleUIShellGlobalHeader_HOa1",
+    );
+    let homePageType: "classic" | "redwood" | null = null;
 
-    await expect(homeLink).toBeVisible({ timeout: 30_000 });
-    await homeLink.click();
+    // Fusion exposes a different Home control in the Classic and Redwood
+    // shells. Wait for either supported shell instead of assuming one layout.
+    await expect
+      .poll(
+        async () => {
+          if (await redwoodHomeLink.isVisible()) {
+            homePageType = "redwood";
+            return true;
+          }
 
-    // Wait for the Oracle Home page content before selecting an application area.
-    await expect(this.page.locator("#clusters_container")).toBeVisible({
-      timeout: 30_000,
-    });
+          if (await classicHomeLink.isVisible()) {
+            homePageType = "classic";
+            return true;
+          }
+
+          return false;
+        },
+        {
+          message: "Waiting for either the Classic or Redwood Home link",
+          timeout: 30_000,
+        },
+      )
+      .toBe(true);
+
+    if (homePageType === "classic") {
+      // Authentication normally finishes on Classic Home. Avoid clicking Home
+      // again because its delayed navigation can overwrite the next tab click.
+      if (await classicHomeContent.isVisible()) {
+        return;
+      }
+
+      await classicHomeLink.click();
+
+      await expect(classicHomeContent).toBeVisible({ timeout: 30_000 });
+      return;
+    }
+
+    await redwoodHomeLink.click();
+
+    // Redwood does not expose the Classic clusters container. The destination
+    // navigation method performs the next page-specific readiness assertion.
+    await this.page.waitForLoadState("domcontentloaded");
   }
 
   /**
