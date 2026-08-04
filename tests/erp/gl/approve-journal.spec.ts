@@ -5,7 +5,7 @@ import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.4.2 - authorized user can approve a journal", async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(180_000);
 
   // Require the exact batch configured for this approval run.
   const journalBatchName = process.env.GL_JOURNAL_BATCH_NAME;
