@@ -81,7 +81,7 @@ export class ManageJournalsPage {
     });
 
     // Confirm the search returned the exact journal batch requested by the test.
-    await expect(journalBatchLink).toBeVisible({ timeout: 30_000 });
+    await expect(journalBatchLink.first()).toBeVisible({ timeout: 30_000 });
   }
 
   async openJournalBatch(journalBatchName: string): Promise<void> {
@@ -90,9 +90,63 @@ export class ManageJournalsPage {
       exact: true,
     });
 
-    await expect(journalBatchLink).toBeVisible({ timeout: 30_000 });
-    // Open the selected batch on the Edit Journal page.
-    await journalBatchLink.click();
+    await expect(journalBatchLink.first()).toBeVisible({ timeout: 30_000 });
+    // Oracle can add a reporting-ledger row with the same batch name after
+    // posting. The first exact match is the primary journal used by this flow.
+    await journalBatchLink.first().click();
+  }
+
+  /**
+   * Waits for Oracle's asynchronous post-approval process to finish.
+   *
+   * Approval returns before posting is complete, so the search must be
+   * resubmitted to refresh the grid. Oracle can return both primary-ledger and
+   * reporting-ledger rows for the same exact batch name; every row currently
+   * returned must show Posted before the test can continue.
+   */
+  async waitForJournalBatchToBePosted(
+    journalBatchName: string,
+  ): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          await this.submitJournalBatchSearch(journalBatchName);
+
+          const journalBatchLinks = this.page.getByRole("link", {
+            name: journalBatchName,
+            exact: true,
+          });
+          const resultCount = await journalBatchLinks.count();
+
+          if (resultCount === 0) {
+            // A temporary empty result is treated as an incomplete refresh and
+            // retried until the polling timeout is reached.
+            return false;
+          }
+
+          for (let index = 0; index < resultCount; index += 1) {
+            // Scope the status check to the row containing this exact batch
+            // link so an unrelated Posted journal cannot satisfy the poll.
+            const resultRow = journalBatchLinks
+              .nth(index)
+              .locator("xpath=ancestor::tr[1]");
+
+            if (!(await resultRow.getByText("Posted", { exact: true }).count())) {
+              return false;
+            }
+          }
+
+          return true;
+        },
+        {
+          message: `Expected every ${journalBatchName} search result to be posted`,
+          // Posting time varies by environment; poll at bounded intervals
+          // instead of introducing a fixed wait into every execution.
+          timeout: 120_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(true);
   }
 
   // Journal batch deletion verification
