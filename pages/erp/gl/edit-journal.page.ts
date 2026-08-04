@@ -59,7 +59,11 @@ export class EditJournalPage {
     await expect(approvalStatusRow).toContainText("Required");
   }
 
-  // Journal batch approval
+  /**
+   * Approves the open batch and confirms Oracle accepted the request.
+   * This confirmation starts asynchronous processing; posted status is
+   * verified separately from Manage Journals.
+   */
   async approveJournalBatch(): Promise<void> {
     const approveButton = this.page.getByRole("button", {
       name: "Approve",
@@ -93,6 +97,8 @@ export class EditJournalPage {
       exact: true,
     });
 
+    // After approval, Cancel closes the journal without undoing the submitted
+    // approval action and returns the user to the search results.
     await expect(cancelButton).toBeVisible({ timeout: 30_000 });
     await cancelButton.click();
 

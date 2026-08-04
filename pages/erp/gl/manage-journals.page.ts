@@ -91,11 +91,19 @@ export class ManageJournalsPage {
     });
 
     await expect(journalBatchLink.first()).toBeVisible({ timeout: 30_000 });
-    // Open the selected batch on the Edit Journal page.
+    // Oracle can add a reporting-ledger row with the same batch name after
+    // posting. The first exact match is the primary journal used by this flow.
     await journalBatchLink.first().click();
   }
 
-  // Approval posting can run asynchronously after the approver confirms.
+  /**
+   * Waits for Oracle's asynchronous post-approval process to finish.
+   *
+   * Approval returns before posting is complete, so the search must be
+   * resubmitted to refresh the grid. Oracle can return both primary-ledger and
+   * reporting-ledger rows for the same exact batch name; every row currently
+   * returned must show Posted before the test can continue.
+   */
   async waitForJournalBatchToBePosted(
     journalBatchName: string,
   ): Promise<void> {
@@ -111,10 +119,14 @@ export class ManageJournalsPage {
           const resultCount = await journalBatchLinks.count();
 
           if (resultCount === 0) {
+            // A temporary empty result is treated as an incomplete refresh and
+            // retried until the polling timeout is reached.
             return false;
           }
 
           for (let index = 0; index < resultCount; index += 1) {
+            // Scope the status check to the row containing this exact batch
+            // link so an unrelated Posted journal cannot satisfy the poll.
             const resultRow = journalBatchLinks
               .nth(index)
               .locator("xpath=ancestor::tr[1]");
@@ -128,6 +140,8 @@ export class ManageJournalsPage {
         },
         {
           message: `Expected every ${journalBatchName} search result to be posted`,
+          // Posting time varies by environment; poll at bounded intervals
+          // instead of introducing a fixed wait into every execution.
           timeout: 120_000,
           intervals: [5_000, 10_000],
         },
