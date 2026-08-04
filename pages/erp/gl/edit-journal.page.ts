@@ -59,6 +59,48 @@ export class EditJournalPage {
     await expect(approvalStatusRow).toContainText("Required");
   }
 
+  // Journal batch approval
+  async approveJournalBatch(): Promise<void> {
+    const approveButton = this.page.getByRole("button", {
+      name: "Approve",
+      exact: true,
+    });
+
+    await expect(approveButton).toBeVisible({ timeout: 30_000 });
+    await expect(approveButton).toBeEnabled();
+    await approveButton.click();
+
+    const confirmationMessage = this.page.getByText(
+      "Your approval action for the journal batch is being processed.",
+      { exact: true },
+    );
+
+    await expect(confirmationMessage).toBeVisible({ timeout: 30_000 });
+
+    const okButton = this.page.getByRole("button", {
+      name: "OK",
+      exact: true,
+    });
+
+    await expect(okButton).toBeVisible({ timeout: 30_000 });
+    await okButton.click();
+    await expect(confirmationMessage).toBeHidden({ timeout: 30_000 });
+  }
+
+  async returnToManageJournals(): Promise<void> {
+    const cancelButton = this.page.getByRole("button", {
+      name: "Cancel",
+      exact: true,
+    });
+
+    await expect(cancelButton).toBeVisible({ timeout: 30_000 });
+    await cancelButton.click();
+
+    await expect(
+      this.page.locator("h1", { hasText: /^Manage Journals$/ }),
+    ).toBeVisible({ timeout: 60_000 });
+  }
+
   // Journal batch deletion
   async deleteJournalBatch(): Promise<void> {
     // Only journals requiring approval are eligible for this deletion flow.

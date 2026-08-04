@@ -81,7 +81,7 @@ export class ManageJournalsPage {
     });
 
     // Confirm the search returned the exact journal batch requested by the test.
-    await expect(journalBatchLink).toBeVisible({ timeout: 30_000 });
+    await expect(journalBatchLink.first()).toBeVisible({ timeout: 30_000 });
   }
 
   async openJournalBatch(journalBatchName: string): Promise<void> {
@@ -90,9 +90,49 @@ export class ManageJournalsPage {
       exact: true,
     });
 
-    await expect(journalBatchLink).toBeVisible({ timeout: 30_000 });
+    await expect(journalBatchLink.first()).toBeVisible({ timeout: 30_000 });
     // Open the selected batch on the Edit Journal page.
-    await journalBatchLink.click();
+    await journalBatchLink.first().click();
+  }
+
+  // Approval posting can run asynchronously after the approver confirms.
+  async waitForJournalBatchToBePosted(
+    journalBatchName: string,
+  ): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          await this.submitJournalBatchSearch(journalBatchName);
+
+          const journalBatchLinks = this.page.getByRole("link", {
+            name: journalBatchName,
+            exact: true,
+          });
+          const resultCount = await journalBatchLinks.count();
+
+          if (resultCount === 0) {
+            return false;
+          }
+
+          for (let index = 0; index < resultCount; index += 1) {
+            const resultRow = journalBatchLinks
+              .nth(index)
+              .locator("xpath=ancestor::tr[1]");
+
+            if (!(await resultRow.getByText("Posted", { exact: true }).count())) {
+              return false;
+            }
+          }
+
+          return true;
+        },
+        {
+          message: `Expected every ${journalBatchName} search result to be posted`,
+          timeout: 120_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(true);
   }
 
   // Journal batch deletion verification

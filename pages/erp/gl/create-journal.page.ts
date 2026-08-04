@@ -32,12 +32,26 @@ export class CreateJournalPage {
   async selectBalanceType(
     balanceType: "Actual" | "Encumbrance",
   ): Promise<void> {
-    const balanceTypeSelect = this.page.getByLabel("Balance Type");
+    const balanceTypeRow = this.page.locator('tr[id$="ShowLessBalanceType"]');
 
-    // Oracle represents the visible balance types with numeric option values.
-    const balanceTypeValue = balanceType === "Actual" ? "0" : "1";
+    await expect(balanceTypeRow).toBeVisible({ timeout: 30_000 });
 
-    await balanceTypeSelect.selectOption(balanceTypeValue);
+    const editableSelect = balanceTypeRow.locator("select");
+
+    if (await editableSelect.isVisible()) {
+      await editableSelect.selectOption({ label: balanceType });
+      await expect(editableSelect).toHaveValue(
+        balanceType === "Actual" ? "0" : "1",
+      );
+      return;
+    }
+
+    // Some Fusion environments render Balance Type as read-only.
+    const readOnlyValue = balanceTypeRow.locator(
+      'span[id$="ShowLessBalanceType::content"]',
+    );
+
+    await expect(readOnlyValue).toHaveText(balanceType);
   }
 
   async selectAccountingPeriod(accountingPeriod: string): Promise<void> {

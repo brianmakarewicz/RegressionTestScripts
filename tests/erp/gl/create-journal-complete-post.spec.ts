@@ -7,7 +7,7 @@ import { CreateJournalPage } from "../../../pages/erp/gl/create-journal.page";
 import { loadCreateJournalData } from "../../../utils/test-data/load-create-journal-data";
 
 test("user can create, complete, and post a journal", async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(60_000);
 
   // Load environment-specific scenario data and generate a unique batch name.
   const journalDataFilePath = path.join(
