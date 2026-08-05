@@ -24,6 +24,18 @@ export class EditJournalPage {
     );
 
     await expect(journalBatchName).toBeVisible({ timeout: 30_000 });
+
+    // Saved journals render the batch name as an editable input, while
+    // approval-state journals can render the same control as read-only text.
+    const isEditableControl = await journalBatchName.evaluate((element) =>
+      element.matches("input, textarea"),
+    );
+
+    if (isEditableControl) {
+      await expect(journalBatchName).toHaveValue(expectedBatchName);
+      return;
+    }
+
     await expect(journalBatchName).toHaveText(expectedBatchName);
   }
 
@@ -43,6 +55,80 @@ export class EditJournalPage {
 
     await expect(category).toBeVisible({ timeout: 30_000 });
     await expect(category).toHaveText(expectedCategory);
+  }
+
+  // Journal completion and approval submission
+  async completeJournal(): Promise<void> {
+    const completeButton = this.page.getByRole("button", {
+      name: "Complete",
+      exact: true,
+    });
+
+    await expect(completeButton).toBeVisible({ timeout: 30_000 });
+    await expect(completeButton).toBeEnabled();
+    await completeButton.click();
+
+    // The Complete button disappears after Oracle finishes the transition.
+    await expect(completeButton).toBeHidden({ timeout: 60_000 });
+  }
+
+  async postJournal(): Promise<void> {
+    const postButton = this.page.getByRole("button", {
+      name: "Post",
+      exact: true,
+    });
+
+    await expect(postButton).toBeVisible({ timeout: 30_000 });
+    await expect(postButton).toBeEnabled();
+    await postButton.click();
+
+    const approvalRequiredMessage = this.page.getByText(
+      "The journal requires approval before it can be posted, and has been forwarded to the approver.",
+      { exact: true },
+    );
+
+    await expect(approvalRequiredMessage).toBeVisible({ timeout: 60_000 });
+
+    const okButton = this.page.locator(
+      '[id*="userResponsePopupDialogButtonOk"]',
+    );
+
+    await expect(okButton).toBeVisible({ timeout: 30_000 });
+    await okButton.click();
+    await expect(approvalRequiredMessage).toBeHidden({ timeout: 30_000 });
+  }
+
+  // Journal approval history
+  async showJournalBatchDetails(): Promise<void> {
+    // The ID suffix targets the batch-level Show More link, not the journal one.
+    const showMoreLink = this.page.locator('a[id$="ap1:showMore"]');
+
+    await expect(showMoreLink).toBeVisible({ timeout: 30_000 });
+    await showMoreLink.click();
+  }
+
+  async openActionLog(): Promise<void> {
+    const actionLogLink = this.page.getByRole("link", {
+      name: "Action Log",
+      exact: true,
+    });
+
+    await expect(actionLogLink).toBeVisible({ timeout: 30_000 });
+    await actionLogLink.click();
+
+    await expect(
+      this.page.getByRole("table", { name: "Action Log" }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  async verifyActionLogContainsAction(expectedAction: string): Promise<void> {
+    const actionLogTable = this.page.getByRole("table", {
+      name: "Action Log",
+    });
+
+    await expect(
+      actionLogTable.getByText(expectedAction, { exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
   }
 
   private async verifyApprovalStatusIsRequired(): Promise<void> {

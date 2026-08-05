@@ -231,6 +231,11 @@ export class CreateJournalPage {
     await expect(saveButton).toBeVisible({ timeout: 30_000 });
     await expect(saveButton).toBeEnabled();
 
+    // Move focus out of the journal grid before opening the split-button menu.
+    // Oracle processes the grid editor's blur separately from the menu key.
+    await saveButton.focus();
+    await expect(saveButton).toBeFocused();
+
     // Save is a split button; ArrowDown opens its additional save options.
     await saveButton.press("ArrowDown");
 
