@@ -97,6 +97,42 @@ export class ManageJournalsPage {
   }
 
   /**
+   * Opens the journal result for the requested ledger.
+   *
+   * Oracle can return primary- and reporting-ledger journals with the same
+   * batch name, so the matching row must be selected before its Journal link
+   * is opened.
+   */
+  async openJournalForLedger(
+    journalBatchName: string,
+    ledgerName: string,
+  ): Promise<void> {
+    const searchResultsTable = this.page.getByRole("table", {
+      name: "Search Results",
+      exact: true,
+    });
+
+    const journalBatchLinks = searchResultsTable.getByRole("link", {
+      name: journalBatchName,
+      exact: true,
+    });
+
+    const matchingRow = journalBatchLinks
+      .locator("xpath=ancestor::tr[1]")
+      .filter({ hasText: ledgerName });
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+    await expect(
+      matchingRow.getByText(ledgerName, { exact: true }),
+    ).toBeVisible();
+
+    const journalLink = matchingRow.locator('a[id$="commandLink3"]');
+
+    await expect(journalLink).toBeVisible({ timeout: 30_000 });
+    await journalLink.click();
+  }
+
+  /**
    * Waits for Oracle's asynchronous post-approval process to finish.
    *
    * Approval returns before posting is complete, so the search must be

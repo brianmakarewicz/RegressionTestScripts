@@ -1,4 +1,5 @@
 import { test } from "@playwright/test";
+import { env } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
@@ -11,9 +12,19 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async ({
 
   // Require the exact approved journal batch prepared by the preceding tests.
   const journalBatchName = process.env.GL_JOURNAL_BATCH_NAME;
+  const reversalPeriod = process.env.GL_REVERSAL_PERIOD;
+  const ledgerName = env.glLedger;
 
   if (!journalBatchName) {
     throw new Error("GL_JOURNAL_BATCH_NAME is required");
+  }
+
+  if (!ledgerName) {
+    throw new Error("ORACLE_GL_LEDGER is required");
+  }
+
+  if (!reversalPeriod) {
+    throw new Error("GL_REVERSAL_PERIOD is required");
   }
 
   const authentication = new AuthenticationWorkflow(page);
@@ -26,8 +37,16 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async ({
   await authentication.login();
   await navigatorPage.goToManageJournalsPage();
   await manageJournalsPage.waitForJournalBatchToBePosted(journalBatchName);
-  await manageJournalsPage.openJournalBatch(journalBatchName);
+  await manageJournalsPage.openJournalForLedger(journalBatchName, ledgerName);
   await editJournalPage.waitForEditJournalPage();
   await editJournalPage.verifyJournalBatchName(journalBatchName);
+  await editJournalPage.verifyLedger(ledgerName);
   await editJournalPage.verifyCategory("Accrual");
+
+  // Confirm the journal is configured for the requested automatic reversal.
+  await editJournalPage.showJournalDetails();
+  await editJournalPage.openReversalTab();
+  await editJournalPage.verifyReversalPeriod(reversalPeriod);
+  await editJournalPage.verifyReversalMethod("Switch DR or CR");
+  await editJournalPage.verifyReversalStatus("Not reversed");
 });

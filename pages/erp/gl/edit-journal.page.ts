@@ -48,6 +48,15 @@ export class EditJournalPage {
     await expect(balanceType).toHaveText(expectedBalanceType);
   }
 
+  async verifyLedger(expectedLedger: string): Promise<void> {
+    const ledger = this.page.locator(
+      '[id$="showLessLedgerCLOV:sis1:is1::content"]',
+    );
+
+    await expect(ledger).toBeVisible({ timeout: 30_000 });
+    await expect(ledger).toHaveText(expectedLedger);
+  }
+
   async verifyCategory(expectedCategory: string): Promise<void> {
     const category = this.page.locator(
       '[id$="sis3:userJeCategoryNameInputSearch1::content"]',
@@ -55,6 +64,77 @@ export class EditJournalPage {
 
     await expect(category).toBeVisible({ timeout: 30_000 });
     await expect(category).toHaveText(expectedCategory);
+  }
+
+  // Journal reversal details
+  async showJournalDetails(): Promise<void> {
+    const showMoreLink = this.page.locator('a[id$="ap1:showMoreHeader"]');
+
+    await expect(showMoreLink).toBeVisible({ timeout: 30_000 });
+    await showMoreLink.click();
+
+    await expect(
+      this.page.getByRole("link", { name: "Reversal", exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  async openReversalTab(): Promise<void> {
+    const reversalLink = this.page.getByRole("link", {
+      name: "Reversal",
+      exact: true,
+    });
+
+    await expect(reversalLink).toBeVisible({ timeout: 30_000 });
+    await reversalLink.click();
+
+    await expect(
+      this.page.locator('tr[id$="plam28"]'),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  async verifyReversalPeriod(expectedPeriod: string): Promise<void> {
+    const reversalPeriod = this.page.locator(
+      '[id$="ReversePeriodCLOV:sis1:is1::content"]',
+    );
+
+    await expect(reversalPeriod).toBeVisible({ timeout: 30_000 });
+
+    const isEditableControl = await reversalPeriod.evaluate((element) =>
+      element.matches("input"),
+    );
+
+    if (isEditableControl) {
+      await expect(reversalPeriod).toHaveValue(expectedPeriod);
+      return;
+    }
+
+    await expect(reversalPeriod).toHaveText(expectedPeriod);
+  }
+
+  async verifyReversalMethod(expectedMethod: string): Promise<void> {
+    const reversalMethod = this.page.locator('[id$="soc1::content"]');
+
+    await expect(reversalMethod).toBeVisible({ timeout: 30_000 });
+
+    const isEditableControl = await reversalMethod.evaluate((element) =>
+      element.matches("select"),
+    );
+
+    if (isEditableControl) {
+      await expect(reversalMethod.locator("option:checked")).toHaveText(
+        expectedMethod,
+      );
+      return;
+    }
+
+    await expect(reversalMethod).toHaveText(expectedMethod);
+  }
+
+  async verifyReversalStatus(expectedStatus: string): Promise<void> {
+    const reversalStatusRow = this.page.locator('tr[id$="plam28"]');
+
+    await expect(reversalStatusRow).toBeVisible({ timeout: 30_000 });
+    await expect(reversalStatusRow).toContainText(expectedStatus);
   }
 
   // Journal completion and approval submission
