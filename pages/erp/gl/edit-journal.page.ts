@@ -137,6 +137,24 @@ export class EditJournalPage {
     await expect(reversalStatusRow).toContainText(expectedStatus);
   }
 
+  /**
+   * Saves the open journal and closes the Edit Journal page.
+   */
+  async saveAndClose(): Promise<void> {
+    const saveDropdown = this.page.locator('a[id$="saveBatch::popEl"]');
+
+    await expect(saveDropdown).toBeVisible({ timeout: 30_000 });
+    await saveDropdown.click();
+
+    const saveAndCloseOption = this.page.getByRole("menuitem", {
+      name: "Save and Close",
+      exact: true,
+    });
+
+    await expect(saveAndCloseOption).toBeVisible({ timeout: 30_000 });
+    await saveAndCloseOption.click();
+  }
+
   // Journal completion and approval submission
   async completeJournal(): Promise<void> {
     const completeButton = this.page.getByRole("button", {

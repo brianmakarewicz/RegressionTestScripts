@@ -9,6 +9,24 @@ import { expect, type Page } from "@playwright/test";
 export class ManageJournalsPage {
   constructor(private page: Page) {}
 
+  private journalRowForLedger(
+    journalBatchName: string,
+    ledgerName: string,
+  ) {
+    const searchResultsTable = this.page.getByRole("table", {
+      name: "Search Results",
+      exact: true,
+    });
+
+    return searchResultsTable
+      .getByRole("link", {
+        name: journalBatchName,
+        exact: true,
+      })
+      .locator("xpath=ancestor::tr[1]")
+      .filter({ hasText: ledgerName });
+  }
+
   /**
    * Closes Manage Journals and returns to the Journals workspace.
    */
@@ -125,19 +143,10 @@ export class ManageJournalsPage {
     journalBatchName: string,
     ledgerName: string,
   ): Promise<void> {
-    const searchResultsTable = this.page.getByRole("table", {
-      name: "Search Results",
-      exact: true,
-    });
-
-    const journalBatchLinks = searchResultsTable.getByRole("link", {
-      name: journalBatchName,
-      exact: true,
-    });
-
-    const matchingRow = journalBatchLinks
-      .locator("xpath=ancestor::tr[1]")
-      .filter({ hasText: ledgerName });
+    const matchingRow = this.journalRowForLedger(
+      journalBatchName,
+      ledgerName,
+    );
 
     await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
     await expect(
@@ -148,6 +157,81 @@ export class ManageJournalsPage {
 
     await expect(journalLink).toBeVisible({ timeout: 30_000 });
     await journalLink.click();
+  }
+
+  /**
+   * Verifies the business state of one exact batch-and-ledger result row.
+   */
+  async verifyJournalRowState(
+    journalBatchName: string,
+    ledgerName: string,
+    expectedState: {
+      batchStatus: string;
+      approvalStatus: string;
+      reversibleDetail: string;
+    },
+  ): Promise<void> {
+    const matchingRow = this.journalRowForLedger(
+      journalBatchName,
+      ledgerName,
+    );
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+    await expect(
+      matchingRow.getByText(expectedState.batchStatus, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      matchingRow.getByText(expectedState.approvalStatus, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      matchingRow.getByText(expectedState.reversibleDetail, { exact: true }),
+    ).toBeVisible();
+  }
+
+  /**
+   * Refreshes the search until Oracle marks the primary journal as already
+   * reversed. Any intermediate value remains eligible for another retry.
+   */
+  async waitForJournalRowToShowReversed(
+    journalBatchName: string,
+    ledgerName: string,
+    processId: string,
+  ): Promise<void> {
+    const reversedDetail = "Not Reversible - Journal is already reversed";
+
+    await expect
+      .poll(
+        async () => {
+          await this.submitJournalBatchSearch(journalBatchName);
+
+          const matchingRow = this.journalRowForLedger(
+            journalBatchName,
+            ledgerName,
+          );
+
+          if ((await matchingRow.count()) !== 1) {
+            return false;
+          }
+
+          return matchingRow
+            .getByText(reversedDetail, { exact: true })
+            .isVisible();
+        },
+        {
+          message:
+            `Expected ${journalBatchName} in ${ledgerName} to be reversed by ` +
+            `AutoReverse process ${processId}`,
+          timeout: 180_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(true);
+
+    await this.verifyJournalRowState(journalBatchName, ledgerName, {
+      batchStatus: "Posted",
+      approvalStatus: "Approved",
+      reversibleDetail: reversedDetail,
+    });
   }
 
   /**

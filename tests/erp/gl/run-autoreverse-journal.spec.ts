@@ -10,7 +10,7 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async (
   { page },
   testInfo,
 ) => {
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
 
   // Require the exact approved journal batch prepared by the preceding tests.
   const journalBatchName = process.env.GL_JOURNAL_BATCH_NAME;
@@ -45,6 +45,15 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async (
   await authentication.login();
   await navigatorPage.goToManageJournalsPage();
   await manageJournalsPage.waitForJournalBatchToBePosted(journalBatchName);
+  await manageJournalsPage.verifyJournalRowState(
+    journalBatchName,
+    ledgerName,
+    {
+      batchStatus: "Posted",
+      approvalStatus: "Approved",
+      reversibleDetail: "Reversible",
+    },
+  );
   await manageJournalsPage.openJournalForLedger(journalBatchName, ledgerName);
   await editJournalPage.waitForEditJournalPage();
   await editJournalPage.verifyJournalBatchName(journalBatchName);
@@ -77,4 +86,27 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async (
     body: processId,
     contentType: "text/plain",
   });
+
+  // Oracle returns to Journals after submission. Reopen Manage Journals and
+  // confirm the original primary-ledger journal remains posted.
+  await navigatorPage.goToManageJournalsFromTasks();
+  await manageJournalsPage.waitForJournalBatchToBePosted(journalBatchName);
+
+  // Refresh the search until the exact primary-ledger row reports that Oracle
+  // has reversed it, then open the journal once for final detail validation.
+  await manageJournalsPage.waitForJournalRowToShowReversed(
+    journalBatchName,
+    ledgerName,
+    processId,
+  );
+  await manageJournalsPage.openJournalForLedger(journalBatchName, ledgerName);
+  await editJournalPage.waitForEditJournalPage();
+  await editJournalPage.verifyJournalBatchName(journalBatchName);
+  await editJournalPage.verifyLedger(ledgerName);
+  await editJournalPage.showJournalDetails();
+  await editJournalPage.openReversalTab();
+
+  await editJournalPage.verifyReversalPeriod(reversalPeriod);
+  await editJournalPage.verifyReversalStatus("Reversed");
+  await editJournalPage.saveAndClose();
 });
