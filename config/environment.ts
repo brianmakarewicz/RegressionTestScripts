@@ -34,6 +34,7 @@ export const env = {
   baseUrl: process.env.ORACLE_BASE_URL,
   username: process.env.ORACLE_USERNAME,
   password: process.env.ORACLE_PASSWORD,
+  glDataAccessSet: process.env.ORACLE_GL_DATA_ACCESS_SET,
   glLedger: process.env.ORACLE_GL_LEDGER,
   envFilePath,
 };

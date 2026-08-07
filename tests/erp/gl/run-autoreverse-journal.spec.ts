@@ -6,14 +6,16 @@ import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
-test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async ({
-  page,
-}) => {
+test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async (
+  { page },
+  testInfo,
+) => {
   test.setTimeout(240_000);
 
   // Require the exact approved journal batch prepared by the preceding tests.
   const journalBatchName = process.env.GL_JOURNAL_BATCH_NAME;
   const reversalPeriod = process.env.GL_REVERSAL_PERIOD;
+  const dataAccessSet = env.glDataAccessSet;
   const ledgerName = env.glLedger;
 
   if (!journalBatchName) {
@@ -22,6 +24,10 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async ({
 
   if (!ledgerName) {
     throw new Error("ORACLE_GL_LEDGER is required");
+  }
+
+  if (!dataAccessSet) {
+    throw new Error("ORACLE_GL_DATA_ACCESS_SET is required");
   }
 
   if (!reversalPeriod) {
@@ -35,7 +41,7 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async ({
   const autoReverseJournalsPage = new AutoReverseJournalsPage(page);
 
   // Find the approved accrual journal and confirm posting has completed before
-  // introducing the AutoReverse submission capability in the next increment.
+  // submitting AutoReverse against its configured reversal period.
   await authentication.login();
   await navigatorPage.goToManageJournalsPage();
   await manageJournalsPage.waitForJournalBatchToBePosted(journalBatchName);
@@ -53,9 +59,22 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async ({
   await editJournalPage.verifyReversalStatus("Not reversed");
 
   // Return through the Journals workspace and open the AutoReverse task.
-  // Parameter entry and process submission are added as a separate capability.
   await editJournalPage.returnToManageJournals();
   await manageJournalsPage.clickDone();
   await navigatorPage.goToRunAutoReversePage();
   await autoReverseJournalsPage.waitForParameterForm();
+
+  // Submit AutoReverse and retain Oracle's process ID in the test report so a
+  // failed business-state verification can be traced to the submitted job.
+  const processId = await autoReverseJournalsPage.submitAutoReverse({
+    dataAccessSet,
+    ledger: ledgerName,
+    reversalPeriod,
+  });
+
+  console.log(`AutoReverse process ID: ${processId}`);
+  await testInfo.attach("AutoReverse process ID", {
+    body: processId,
+    contentType: "text/plain",
+  });
 });
