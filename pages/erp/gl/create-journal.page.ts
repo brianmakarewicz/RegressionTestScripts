@@ -219,25 +219,24 @@ export class CreateJournalPage {
     await expect(descriptionTextbox).toBeVisible({ timeout: 30_000 });
     await descriptionTextbox.fill(description);
     await expect(descriptionTextbox).toHaveValue(description);
+
+    // Commit the final grid edit before a page-level action such as Save.
+    // Oracle ADF can otherwise consume the next key while closing the editor.
+    await descriptionTextbox.press("Tab");
+    await expect(descriptionTextbox).toHaveValue(description);
   }
 
   // Journal processing actions
   async saveAndClose(): Promise<void> {
-    const saveButton = this.page.getByRole("button", {
-      name: "Save",
-      exact: true,
-    });
+    // Oracle renders the Save dropdown as a separate anchor beside the Save
+    // action. Clicking it directly avoids keyboard events being consumed by
+    // an ADF journal-line editor that is still finishing its blur processing.
+    const saveDropdown = this.page.locator(
+      'a[id$="saveBatch::popEl"]',
+    );
 
-    await expect(saveButton).toBeVisible({ timeout: 30_000 });
-    await expect(saveButton).toBeEnabled();
-
-    // Move focus out of the journal grid before opening the split-button menu.
-    // Oracle processes the grid editor's blur separately from the menu key.
-    await saveButton.focus();
-    await expect(saveButton).toBeFocused();
-
-    // Save is a split button; ArrowDown opens its additional save options.
-    await saveButton.press("ArrowDown");
+    await expect(saveDropdown).toBeVisible({ timeout: 30_000 });
+    await saveDropdown.click();
 
     const saveAndCloseOption = this.page.getByRole("menuitem", {
       name: "Save and Close",
