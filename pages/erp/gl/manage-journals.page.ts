@@ -9,6 +9,24 @@ import { expect, type Page } from "@playwright/test";
 export class ManageJournalsPage {
   constructor(private page: Page) {}
 
+  /**
+   * Closes Manage Journals and returns to the Journals workspace.
+   */
+  async clickDone(): Promise<void> {
+    const doneButton = this.page.getByRole("button", {
+      name: "Done",
+      exact: true,
+    });
+
+    await expect(doneButton).toBeVisible({ timeout: 30_000 });
+    await expect(doneButton).toBeEnabled();
+    await doneButton.click();
+
+    await expect(
+      this.page.locator("h1", { hasText: /^Journals$/ }),
+    ).toBeVisible({ timeout: 60_000 });
+  }
+
   // Search panel preparation
   private async ensureSearchPanelExpanded(): Promise<void> {
     const journalBatchTextbox = this.page.getByRole("textbox", {

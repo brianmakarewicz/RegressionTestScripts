@@ -167,6 +167,41 @@ export class FusionNavigatorPage {
     ).toBeVisible({ timeout: 30_000 });
   }
 
+  /**
+   * Opens the Tasks menu from the Journals workspace.
+   */
+  async openTasksMenu(): Promise<void> {
+    await expect(
+      this.page.getByRole("heading", {
+        name: "Journals",
+        exact: true,
+        level: 1,
+      }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    const tasksLink = this.page.locator(
+      'a[id$="_FOTsdi_JournalEntryPage_itemNode_FndTasksList::disAcr"]',
+    );
+
+    await expect(tasksLink).toBeVisible({ timeout: 30_000 });
+    await tasksLink.click();
+  }
+
+  /**
+   * Opens Run AutoReverse from the Journals workspace task list.
+   */
+  async goToRunAutoReversePage(): Promise<void> {
+    await this.openTasksMenu();
+
+    const runAutoReverseLink = this.page.locator(
+      'a[id$="_FOTRaT:0:RAtl6"]',
+    );
+
+    await expect(runAutoReverseLink).toBeVisible({ timeout: 30_000 });
+    await expect(runAutoReverseLink).toHaveText("Run AutoReverse");
+    await runAutoReverseLink.click();
+  }
+
   async goToAPInvoice(invoiceNumber: string) {
     await this.page.getByRole("link", { name: "Navigator" }).click();
     await this.page.getByTitle("Payables", { exact: true }).click();
