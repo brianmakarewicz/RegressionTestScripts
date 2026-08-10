@@ -22,6 +22,7 @@ test("user can enter Create Journal header information and attach a file", async
   );
   const journalData = loadCreateJournalData(journalDataFilePath);
   const journalBatchName = `${journalData.batchNamePrefix}_${Date.now()}`;
+  console.log(`Journal Batch Name: ${journalBatchName}`);
 
   // Initialize the workflow and page objects used by the scenario.
   const authentication = new AuthenticationWorkflow(page);

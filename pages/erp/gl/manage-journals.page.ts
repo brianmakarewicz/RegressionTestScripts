@@ -9,6 +9,20 @@ import { expect, type Page } from "@playwright/test";
 export class ManageJournalsPage {
   constructor(private page: Page) {}
 
+  private journalRowsForBatch(journalBatchName: string) {
+    const searchResultsTable = this.page.getByRole("table", {
+      name: "Search Results",
+      exact: true,
+    });
+
+    return searchResultsTable
+      .getByRole("link", {
+        name: journalBatchName,
+        exact: true,
+      })
+      .locator("xpath=ancestor::tr[1]");
+  }
+
   private journalRowForLedger(
     journalBatchName: string,
     ledgerName: string,
@@ -130,6 +144,85 @@ export class ManageJournalsPage {
     // Oracle can add a reporting-ledger row with the same batch name after
     // posting. The first exact match is the primary journal used by this flow.
     await journalBatchLink.first().click();
+  }
+
+  /**
+   * Confirms that the search returned one row for the exact requested batch.
+   */
+  async verifyExactJournalBatchResult(
+    journalBatchName: string,
+  ): Promise<void> {
+    const matchingRow = this.journalRowsForBatch(journalBatchName);
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+
+    const exactBatchLink = matchingRow.getByRole("link", {
+      name: journalBatchName,
+      exact: true,
+    });
+
+    await expect(exactBatchLink).toHaveCount(1);
+    await expect(exactBatchLink).toBeVisible();
+  }
+
+  /**
+   * Selects the exact batch row that will be submitted for posting.
+   */
+  async selectJournalBatch(journalBatchName: string): Promise<void> {
+    const matchingRow = this.journalRowsForBatch(journalBatchName);
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+
+    // Click the blank selection cell so a Journal or Journal Batch hyperlink
+    // inside the row cannot be activated accidentally.
+    const selectionCell = matchingRow.locator("td").first();
+
+    await expect(selectionCell).toBeVisible();
+    await selectionCell.click();
+    await expect(matchingRow).toHaveClass(/p_AFSelected/);
+  }
+
+  /**
+   * Submits the selected batch for approval with posting requested.
+   */
+  async postSelectedJournalBatch(): Promise<void> {
+    const postBatchButton = this.page.getByRole("button", {
+      name: "Post Batch",
+      exact: true,
+    });
+
+    await expect(postBatchButton).toBeVisible({ timeout: 30_000 });
+    await expect(postBatchButton).toBeEnabled();
+    await postBatchButton.click();
+
+    const confirmationMessage = this.page.getByText(
+      "Your journal approval request has been submitted.",
+      { exact: true },
+    );
+
+    await expect(confirmationMessage).toBeVisible({ timeout: 60_000 });
+
+    const okButton = this.page.locator(
+      '[id*="userResponsePopupDialogButtonOk"]',
+    );
+
+    await expect(okButton).toBeVisible({ timeout: 30_000 });
+    await okButton.click();
+    await expect(confirmationMessage).toBeHidden({ timeout: 30_000 });
+  }
+
+  /**
+   * Opens the Journal hyperlink from the exact batch result row.
+   */
+  async openJournalForBatch(journalBatchName: string): Promise<void> {
+    const matchingRow = this.journalRowsForBatch(journalBatchName);
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+
+    const journalLink = matchingRow.locator('a[id$="commandLink3"]');
+
+    await expect(journalLink).toBeVisible({ timeout: 30_000 });
+    await journalLink.click();
   }
 
   /**
