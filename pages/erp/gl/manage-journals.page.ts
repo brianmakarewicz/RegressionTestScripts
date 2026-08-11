@@ -9,6 +9,21 @@ import { expect, type Page } from "@playwright/test";
 export class ManageJournalsPage {
   constructor(private page: Page) {}
 
+  private journalResultLinksByNameOrPrefix(journalNameOrPrefix: string) {
+    const searchResultsTable = this.page.getByRole("table", {
+      name: "Search Results",
+      exact: true,
+    });
+    const escapedNameOrPrefix = journalNameOrPrefix.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
+
+    return searchResultsTable.getByRole("link", {
+      name: new RegExp(`^${escapedNameOrPrefix}(?:$|\\s)`),
+    });
+  }
+
   private journalRowsForBatch(journalBatchName: string) {
     const searchResultsTable = this.page.getByRole("table", {
       name: "Search Results",
@@ -132,6 +147,46 @@ export class ManageJournalsPage {
 
     // Confirm the search returned the exact journal batch requested by the test.
     await expect(journalBatchLink.first()).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
+   * Finds a journal result whose visible name is either the exact supplied
+   * text or begins with it. This supports both user-assigned names and names
+   * that Oracle extends during import.
+   */
+  async findJournalBatchByNameOrPrefix(
+    journalNameOrPrefix: string,
+  ): Promise<void> {
+    await this.submitJournalBatchSearch(journalNameOrPrefix);
+
+    const matchingLink = this.journalResultLinksByNameOrPrefix(
+      journalNameOrPrefix,
+    );
+
+    await expect(matchingLink.first()).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
+   * Verifies the Batch Status in the same result row matched by the supplied
+   * exact name or prefix.
+   */
+  async verifyJournalBatchStatusByNameOrPrefix(
+    journalNameOrPrefix: string,
+    expectedBatchStatus: string,
+  ): Promise<void> {
+    const matchingLink = this.journalResultLinksByNameOrPrefix(
+      journalNameOrPrefix,
+    ).first();
+
+    await expect(matchingLink).toBeVisible({ timeout: 30_000 });
+
+    const matchingRow = matchingLink.locator("xpath=ancestor::tr[1]");
+    const batchStatus = matchingRow.getByText(expectedBatchStatus, {
+      exact: true,
+    });
+
+    await expect(batchStatus).toHaveCount(1);
+    await expect(batchStatus).toBeVisible();
   }
 
   async openJournalBatch(journalBatchName: string): Promise<void> {
