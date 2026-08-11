@@ -9,6 +9,34 @@ import { expect, type Page } from "@playwright/test";
 export class ManageJournalsPage {
   constructor(private page: Page) {}
 
+  private journalBatchResultLinksByNameOrPrefix(
+    journalNameOrPrefix: string,
+  ) {
+    const searchResultsTable = this.page.getByRole("table", {
+      name: "Search Results",
+      exact: true,
+    });
+    const escapedNameOrPrefix = journalNameOrPrefix.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
+
+    return searchResultsTable
+      .locator('a[id$="commandLink4"]')
+      .filter({
+        hasText: new RegExp(`^${escapedNameOrPrefix}(?:$|\\s)`),
+      });
+  }
+
+  private journalRowForLedgerByNameOrPrefix(
+    journalNameOrPrefix: string,
+    ledgerName: string,
+  ) {
+    return this.journalBatchResultLinksByNameOrPrefix(journalNameOrPrefix)
+      .locator("xpath=ancestor::tr[1]")
+      .filter({ hasText: ledgerName });
+  }
+
   private journalRowsForBatch(journalBatchName: string) {
     const searchResultsTable = this.page.getByRole("table", {
       name: "Search Results",
@@ -132,6 +160,109 @@ export class ManageJournalsPage {
 
     // Confirm the search returned the exact journal batch requested by the test.
     await expect(journalBatchLink.first()).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
+   * Finds a journal result whose visible name is either the exact supplied
+   * text or begins with it. This supports both user-assigned names and names
+   * that Oracle extends during import.
+   */
+  async findJournalBatchByNameOrPrefix(
+    journalNameOrPrefix: string,
+  ): Promise<void> {
+    await this.submitJournalBatchSearch(journalNameOrPrefix);
+
+    const matchingLink = this.journalBatchResultLinksByNameOrPrefix(
+      journalNameOrPrefix,
+    );
+
+    await expect(matchingLink.first()).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
+   * Verifies the Batch Status in the same result row matched by the supplied
+   * exact name or prefix.
+   */
+  async verifyJournalBatchStatusByNameOrPrefix(
+    journalNameOrPrefix: string,
+    expectedBatchStatus: string,
+  ): Promise<void> {
+    const matchingLink = this.journalBatchResultLinksByNameOrPrefix(
+      journalNameOrPrefix,
+    ).first();
+
+    await expect(matchingLink).toBeVisible({ timeout: 30_000 });
+
+    const matchingRow = matchingLink.locator("xpath=ancestor::tr[1]");
+    const batchStatus = matchingRow.getByText(expectedBatchStatus, {
+      exact: true,
+    });
+
+    await expect(batchStatus).toHaveCount(1);
+    await expect(batchStatus).toBeVisible();
+  }
+
+  /**
+   * Refreshes Manage Journals until the requested ledger row reaches the
+   * expected Batch Status. This validates business state without checking the
+   * scheduled-process status.
+   */
+  async waitForJournalStatusByNameOrPrefixAndLedger(
+    journalNameOrPrefix: string,
+    ledgerName: string,
+    expectedBatchStatus: string,
+    processId: string,
+  ): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          await this.submitJournalBatchSearch(journalNameOrPrefix);
+
+          const matchingRow = this.journalRowForLedgerByNameOrPrefix(
+            journalNameOrPrefix,
+            ledgerName,
+          );
+
+          if ((await matchingRow.count()) !== 1) {
+            return false;
+          }
+
+          return matchingRow
+            .getByText(expectedBatchStatus, { exact: true })
+            .isVisible();
+        },
+        {
+          message:
+            `Expected ${journalNameOrPrefix} in ${ledgerName} to reach ` +
+            `${expectedBatchStatus} after AutoPost process ${processId}`,
+          timeout: 180_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(true);
+  }
+
+  /**
+   * Opens the Journal link in the result row matched by name prefix and ledger.
+   */
+  async openJournalForLedgerByNameOrPrefix(
+    journalNameOrPrefix: string,
+    ledgerName: string,
+  ): Promise<void> {
+    const matchingRow = this.journalRowForLedgerByNameOrPrefix(
+      journalNameOrPrefix,
+      ledgerName,
+    );
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+    await expect(
+      matchingRow.getByText("Posted", { exact: true }),
+    ).toBeVisible();
+
+    const journalLink = matchingRow.locator('a[id$="commandLink3"]');
+
+    await expect(journalLink).toBeVisible({ timeout: 30_000 });
+    await journalLink.click();
   }
 
   async openJournalBatch(journalBatchName: string): Promise<void> {

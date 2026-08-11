@@ -225,6 +225,21 @@ export class FusionNavigatorPage {
     await runAutoReverseLink.click();
   }
 
+  /**
+   * Opens Run AutoPost from the Journals workspace task list.
+   */
+  async goToRunAutoPostPage(): Promise<void> {
+    await this.openTasksMenu();
+
+    const runAutoPostLink = this.page.locator(
+      'a[id$="_FOTRaT:0:RAtl5"]',
+    );
+
+    await expect(runAutoPostLink).toBeVisible({ timeout: 30_000 });
+    await expect(runAutoPostLink).toHaveText("Run AutoPost");
+    await runAutoPostLink.click();
+  }
+
   async goToAPInvoice(invoiceNumber: string) {
     await this.page.getByRole("link", { name: "Navigator" }).click();
     await this.page.getByTitle("Payables", { exact: true }).click();

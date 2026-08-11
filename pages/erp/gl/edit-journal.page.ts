@@ -39,6 +39,23 @@ export class EditJournalPage {
     await expect(journalBatchName).toHaveText(expectedBatchName);
   }
 
+  async verifyJournalBatchNamePrefix(
+    expectedBatchNamePrefix: string,
+  ): Promise<void> {
+    const journalBatchName = this.page.locator(
+      '[id$="showLessBatchName::content"]',
+    );
+    const escapedPrefix = expectedBatchNamePrefix.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
+
+    await expect(journalBatchName).toBeVisible({ timeout: 30_000 });
+    await expect(journalBatchName).toHaveText(
+      new RegExp(`^${escapedPrefix}(?:$|\\s)`),
+    );
+  }
+
   async verifyBalanceType(expectedBalanceType: string): Promise<void> {
     const balanceType = this.page.locator(
       '[id$="ShowLessBalanceType::content"]',
@@ -55,6 +72,18 @@ export class EditJournalPage {
 
     await expect(ledger).toBeVisible({ timeout: 30_000 });
     await expect(ledger).toHaveText(expectedLedger);
+  }
+
+  async verifyBatchStatus(expectedBatchStatus: string): Promise<void> {
+    const batchStatusRow = this.page.locator('tr[id$="ap1:plam4"]');
+
+    await expect(batchStatusRow).toBeVisible({ timeout: 30_000 });
+    await expect(
+      batchStatusRow.getByText("Batch Status", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      batchStatusRow.getByText(expectedBatchStatus, { exact: true }),
+    ).toBeVisible();
   }
 
   async verifyCategory(expectedCategory: string): Promise<void> {
