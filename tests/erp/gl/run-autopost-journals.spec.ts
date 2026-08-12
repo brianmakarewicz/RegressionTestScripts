@@ -1,6 +1,7 @@
 import { test } from "@playwright/test";
 import { env } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
+import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processes.page";
 import { AutoPostJournalsPage } from "../../../pages/erp/gl/auto-post-journals.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
@@ -28,6 +29,7 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
 
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);
+  const scheduledProcessesPage = new ScheduledProcessesPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
   const autoPostJournalsPage = new AutoPostJournalsPage(page);
   const editJournalPage = new EditJournalPage(page);
@@ -48,7 +50,7 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
   await autoPostJournalsPage.verifyProcessName();
 
   // Submit AutoPost using the approved functional criteria set and retain the
-  // process ID for troubleshooting without checking scheduled-process status.
+  // process ID for scheduled-process validation and troubleshooting.
   const processId = await autoPostJournalsPage.submitAutoPost(criteriaSet);
 
   console.log(`AutoPost process ID: ${processId}`);
@@ -57,22 +59,50 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
     contentType: "text/plain",
   });
 
-  // Oracle returns to Journals after confirmation. Reopen Manage Journals and
-  // wait for the matching primary-ledger row to show the posted business state.
-  await navigatorPage.goToManageJournalsFromTasks();
+  // Oracle returns to Journals after confirmation. Open Scheduled Processes,
+  // verify the exact AutoPost request, and obtain the generated posting request
+  // ID from its Enterprise Scheduler Job Log.
+  await navigatorPage.goToScheduledProcessesPage();
+  await scheduledProcessesPage.verifyOverviewPage();
+  await scheduledProcessesPage.waitForProcessToSucceed(
+    "AutoPost Journals",
+    processId,
+  );
+
+  const postingProcessId =
+    await scheduledProcessesPage.downloadLogAndExtractPostingProcessId(
+      processId,
+    );
+
+  console.log(`Post Journals process ID: ${postingProcessId}`);
+  await testInfo.attach("Post Journals process ID", {
+    body: postingProcessId,
+    contentType: "text/plain",
+  });
+
+  // Confirm the posting request identified by the AutoPost log completed
+  // successfully.
+  await scheduledProcessesPage.waitForProcessToSucceed(
+    "Post Journals",
+    postingProcessId,
+  );
+
+  // Return Home, open General Accounting, and search Manage Journals for the
+  // prepared spreadsheet journal in the configured primary ledger.
+  await navigatorPage.goToManageJournalsPage();
   await manageJournalsPage.waitForJournalStatusByNameOrPrefixAndLedger(
     journalBaseName,
     ledgerName,
     "Posted",
-    processId,
+    postingProcessId,
   );
   await manageJournalsPage.openJournalForLedgerByNameOrPrefix(
     journalBaseName,
     ledgerName,
   );
 
-  // Confirm that the opened record is the expected generated batch in the
-  // primary ledger and that its final Batch Status is Posted.
+  // Confirm the opened record is the generated batch in the expected ledger
+  // and that its final Batch Status is Posted.
   await editJournalPage.waitForEditJournalPage();
   await editJournalPage.verifyJournalBatchNamePrefix(journalBaseName);
   await editJournalPage.verifyLedger(ledgerName);
