@@ -134,7 +134,7 @@ export class ScheduledProcessesPage {
     await expect(resultRow).toHaveCount(1);
     await resultRow.scrollIntoViewIfNeeded();
 
-    const processNameCell = this.page.getByRole("cell", {
+    const processNameCell = resultRow.getByRole("cell", {
       name: "AutoPost Journals",
       exact: true,
     });
