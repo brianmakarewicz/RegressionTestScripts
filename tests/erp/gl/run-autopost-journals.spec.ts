@@ -1,7 +1,9 @@
 import { test } from "@playwright/test";
+import { env } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processes.page";
 import { AutoPostJournalsPage } from "../../../pages/erp/gl/auto-post-journals.page";
+import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
@@ -14,10 +16,15 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
   // This value is the base journal name entered in the spreadsheet. Oracle
   // appends the category to the Journal name and import details to the Batch.
   const journalBaseName = process.env.GL_JOURNAL_BATCH_NAME;
+  const ledgerName = env.glLedger;
   const criteriaSet = "All Journals US Primary Ledger";
 
   if (!journalBaseName) {
     throw new Error("GL_JOURNAL_BATCH_NAME is required");
+  }
+
+  if (!ledgerName) {
+    throw new Error("ORACLE_GL_LEDGER is required");
   }
 
   const authentication = new AuthenticationWorkflow(page);
@@ -25,6 +32,7 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
   const scheduledProcessesPage = new ScheduledProcessesPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
   const autoPostJournalsPage = new AutoPostJournalsPage(page);
+  const editJournalPage = new EditJournalPage(page);
 
   // Locate the prepared spreadsheet journal and confirm that it is eligible
   // for this test before AutoPost changes its business state.
@@ -42,7 +50,7 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
   await autoPostJournalsPage.verifyProcessName();
 
   // Submit AutoPost using the approved functional criteria set and retain the
-  // process ID for troubleshooting without checking scheduled-process status.
+  // process ID for scheduled-process validation and troubleshooting.
   const processId = await autoPostJournalsPage.submitAutoPost(criteriaSet);
 
   console.log(`AutoPost process ID: ${processId}`);
@@ -78,4 +86,25 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
     "Post Journals",
     postingProcessId,
   );
+
+  // Return Home, open General Accounting, and search Manage Journals for the
+  // prepared spreadsheet journal in the configured primary ledger.
+  await navigatorPage.goToManageJournalsPage();
+  await manageJournalsPage.waitForJournalStatusByNameOrPrefixAndLedger(
+    journalBaseName,
+    ledgerName,
+    "Posted",
+    postingProcessId,
+  );
+  await manageJournalsPage.openJournalForLedgerByNameOrPrefix(
+    journalBaseName,
+    ledgerName,
+  );
+
+  // Confirm the opened record is the generated batch in the expected ledger
+  // and that its final Batch Status is Posted.
+  await editJournalPage.waitForEditJournalPage();
+  await editJournalPage.verifyJournalBatchNamePrefix(journalBaseName);
+  await editJournalPage.verifyLedger(ledgerName);
+  await editJournalPage.verifyBatchStatus("Posted");
 });
