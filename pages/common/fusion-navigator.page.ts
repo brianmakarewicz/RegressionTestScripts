@@ -168,6 +168,35 @@ export class FusionNavigatorPage {
   }
 
   /**
+   * Opens Inquire on Detail Balances from the expanded General Accounting
+   * quick actions.
+   */
+  async goToInquireOnDetailBalancesPage(): Promise<void> {
+    const expandedQuickActions =
+      await this.openGeneralAccountingQuickActions();
+
+    const inquireOnDetailBalancesLink = expandedQuickActions.locator(
+      'a[target="itemNode_inquire_detbalances"]',
+    );
+
+    await expect(inquireOnDetailBalancesLink).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(inquireOnDetailBalancesLink).toHaveText(
+      "Inquire on Detail Balances",
+    );
+    await inquireOnDetailBalancesLink.click();
+
+    await expect(
+      this.page.getByRole("heading", {
+        name: "Inquire on Detail Balances",
+        exact: true,
+        level: 1,
+      }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
    * Opens the Tasks menu from the Journals workspace.
    */
   async openTasksMenu(): Promise<void> {

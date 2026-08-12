@@ -1,0 +1,5 @@
+{
+  "ledgerOrLedgerSet": "EXAMPLE_LEDGER",
+  "fromAccountingPeriod": "Jan-24",
+  "toAccountingPeriod": "Mar-24"
+}

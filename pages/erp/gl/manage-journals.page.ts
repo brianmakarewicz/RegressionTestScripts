@@ -234,7 +234,7 @@ export class ManageJournalsPage {
         {
           message:
             `Expected ${journalNameOrPrefix} in ${ledgerName} to reach ` +
-            `${expectedBatchStatus} after AutoPost process ${processId}`,
+            `${expectedBatchStatus} after process ${processId}`,
           timeout: 180_000,
           intervals: [5_000, 10_000],
         },
