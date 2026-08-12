@@ -240,6 +240,51 @@ export class FusionNavigatorPage {
     await runAutoPostLink.click();
   }
 
+  /**
+   * Opens Scheduled Processes from the Tools section of the Navigator.
+   */
+  async goToScheduledProcessesPage(): Promise<void> {
+    const navigatorLink = this.page.getByRole("link", {
+      name: "Navigator",
+      exact: true,
+    });
+
+    await expect(navigatorLink).toBeVisible({ timeout: 30_000 });
+    await navigatorLink.click();
+
+    const showMoreLink = this.page.locator(
+      'a[id$=":nvcl1"]',
+    );
+
+    // Show More is the readiness signal for the fully loaded Navigator and
+    // exposes all application groups without racing their individual toggles.
+    await expect(showMoreLink).toBeVisible({ timeout: 30_000 });
+    await expect(showMoreLink).toHaveText("Show More");
+    await showMoreLink.click();
+
+    const toolsGroup = this.page.locator(
+      'div[id$="nvgpgl1_groupNode_tools"]',
+    );
+    const toolsHeader = toolsGroup.locator(
+      'div[id$="nvgpgl2_groupNode_tools"]',
+    );
+
+    await expect(toolsGroup).toBeVisible({ timeout: 30_000 });
+    await expect(toolsHeader).toHaveAttribute("title", "Tools");
+
+    const scheduledProcessesLink = toolsGroup.locator(
+      'a[id$="nv_itemNode_tools_scheduled_processes_fuse_plus"]',
+    );
+
+    await expect(scheduledProcessesLink).toBeVisible({ timeout: 30_000 });
+    await expect(scheduledProcessesLink).toHaveAttribute(
+      "title",
+      "Scheduled Processes",
+    );
+    await scheduledProcessesLink.click();
+    await this.page.waitForLoadState("domcontentloaded");
+  }
+
   async goToAPInvoice(invoiceNumber: string) {
     await this.page.getByRole("link", { name: "Navigator" }).click();
     await this.page.getByTitle("Payables", { exact: true }).click();
