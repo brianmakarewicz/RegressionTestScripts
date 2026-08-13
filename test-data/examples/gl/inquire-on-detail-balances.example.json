@@ -1,5 +1,15 @@
 {
   "ledgerOrLedgerSet": "EXAMPLE_LEDGER",
   "fromAccountingPeriod": "Jan-24",
-  "toAccountingPeriod": "Mar-24"
+  "toAccountingPeriod": "Mar-24",
+  "currency": "USD",
+  "currencyType": "Total",
+  "scenario": "Actual",
+  "legalEntity": "All Legal Entity Values",
+  "sbu": "All SBU Values",
+  "region": "All Region Values",
+  "costCenter": "All Cost Center Values",
+  "naturalAccount": "All Natural Account Values",
+  "intercompany": "All Intercompany Values",
+  "future1": "All Future1 Values"
 }

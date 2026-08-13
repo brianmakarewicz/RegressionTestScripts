@@ -15,12 +15,22 @@ export class FusionLoginPage {
     // Fail before browser navigation when the target environment is not configured.
     expect(env.baseUrl, "ORACLE_BASE_URL must be configured").toBeTruthy();
 
-    await this.page.goto(env.baseUrl!);
+    const usernameTextbox = this.page.getByRole("textbox", {
+      name: "Username",
+      exact: true,
+    });
 
-    // Confirm the complete sign-in form is ready before credentials are entered.
-    await expect(
-      this.page.getByRole("textbox", { name: "Username", exact: true }),
-    ).toBeVisible({ timeout: 30_000 });
+    await this.page.goto(env.baseUrl!, { waitUntil: "domcontentloaded" });
+
+    // OCI occasionally completes the redirect without rendering the sign-in
+    // form. Retry the configured entry URL once instead of continuing against
+    // an incomplete identity page.
+    try {
+      await expect(usernameTextbox).toBeVisible({ timeout: 30_000 });
+    } catch {
+      await this.page.goto(env.baseUrl!, { waitUntil: "domcontentloaded" });
+      await expect(usernameTextbox).toBeVisible({ timeout: 30_000 });
+    }
 
     await expect(
       this.page.getByRole("textbox", { name: "Password", exact: true }),

@@ -21,6 +21,23 @@ function readRequiredString(
   return value.trim();
 }
 
+function readOptionalString(
+  value: unknown,
+  fieldName: string,
+  errors: string[],
+): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string" || value.trim() === "") {
+    errors.push(`${fieldName} must be a non-empty string when provided`);
+    return undefined;
+  }
+
+  return value.trim();
+}
+
 /** Loads and validates detail-balance criteria before browser interaction. */
 export function loadInquireOnDetailBalancesData(
   filePath: string,
@@ -69,6 +86,36 @@ export function loadInquireOnDetailBalancesData(
       "toAccountingPeriod",
       errors,
     ),
+    currency: readOptionalString(parsedData.currency, "currency", errors),
+    currencyType: readOptionalString(
+      parsedData.currencyType,
+      "currencyType",
+      errors,
+    ),
+    scenario: readOptionalString(parsedData.scenario, "scenario", errors),
+    legalEntity: readOptionalString(
+      parsedData.legalEntity,
+      "legalEntity",
+      errors,
+    ),
+    sbu: readOptionalString(parsedData.sbu, "sbu", errors),
+    region: readOptionalString(parsedData.region, "region", errors),
+    costCenter: readOptionalString(
+      parsedData.costCenter,
+      "costCenter",
+      errors,
+    ),
+    naturalAccount: readOptionalString(
+      parsedData.naturalAccount,
+      "naturalAccount",
+      errors,
+    ),
+    intercompany: readOptionalString(
+      parsedData.intercompany,
+      "intercompany",
+      errors,
+    ),
+    future1: readOptionalString(parsedData.future1, "future1", errors),
   };
 
   if (errors.length > 0) {
