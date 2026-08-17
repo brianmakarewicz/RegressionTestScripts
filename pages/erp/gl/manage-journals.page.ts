@@ -256,11 +256,12 @@ export class ManageJournalsPage {
 
     await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
     await expect(
-      matchingRow.getByText("Posted", { exact: true }),
+      matchingRow.getByText(ledgerName, { exact: true }),
     ).toBeVisible();
 
     const journalLink = matchingRow.locator('a[id$="commandLink3"]');
 
+    await expect(journalLink).toHaveCount(1);
     await expect(journalLink).toBeVisible({ timeout: 30_000 });
     await journalLink.click();
   }

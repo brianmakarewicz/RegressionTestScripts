@@ -240,6 +240,22 @@ export class FusionNavigatorPage {
   }
 
   /**
+   * Opens Import Journals from the Journal Import section of the Journals
+   * workspace task list.
+   */
+  async goToImportJournalsPage(): Promise<void> {
+    await this.openTasksMenu();
+
+    const importJournalsLink = this.page.locator(
+      'a[id$="_FOTRaT:0:RAtl16"]',
+    );
+
+    await expect(importJournalsLink).toBeVisible({ timeout: 30_000 });
+    await expect(importJournalsLink).toHaveText("Import Journals");
+    await importJournalsLink.click();
+  }
+
+  /**
    * Opens Run AutoReverse from the Journals workspace task list.
    */
   async goToRunAutoReversePage(): Promise<void> {
