@@ -86,6 +86,50 @@ export class EditJournalPage {
     ).toBeVisible();
   }
 
+  private async verifyReadOnlyStatusRow(
+    rowIdSuffix: string,
+    label: string,
+    expectedValue: string,
+  ): Promise<void> {
+    const statusRow = this.page.locator(`tr[id$="${rowIdSuffix}"]`);
+
+    await expect(statusRow).toBeVisible({ timeout: 30_000 });
+    await expect(
+      statusRow.getByText(label, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      statusRow.getByText(expectedValue, { exact: true }),
+    ).toBeVisible();
+  }
+
+  /**
+   * Confirms the imported journal is complete and eligible for posting in an
+   * environment where approval is not required.
+   */
+  async verifyImportedJournalPrePostState(): Promise<void> {
+    await this.verifyReadOnlyStatusRow("ap1:plam1", "Source", "Spreadsheet");
+    await this.verifyReadOnlyStatusRow(
+      "ap1:plam3",
+      "Approval Status",
+      "Not required",
+    );
+    await this.verifyReadOnlyStatusRow(
+      "ap1:plam34",
+      "Funds Status",
+      "Not attempted",
+    );
+    await this.verifyReadOnlyStatusRow(
+      "ap1:plam4",
+      "Batch Status",
+      "Unposted",
+    );
+    await this.verifyReadOnlyStatusRow(
+      "ap1:plam5",
+      "Completion Status",
+      "Complete",
+    );
+  }
+
   async verifyCategory(expectedCategory: string): Promise<void> {
     const category = this.page.locator(
       '[id$="sis3:userJeCategoryNameInputSearch1::content"]',
@@ -223,6 +267,50 @@ export class EditJournalPage {
     await expect(okButton).toBeVisible({ timeout: 30_000 });
     await okButton.click();
     await expect(approvalRequiredMessage).toBeHidden({ timeout: 30_000 });
+  }
+
+  /**
+   * Posts a journal whose approval status is Not required and returns the
+   * exact posting process ID from Oracle's confirmation.
+   */
+  async postAutoApprovedJournal(): Promise<string> {
+    const postButton = this.page.getByRole("button", {
+      name: "Post",
+      exact: true,
+    });
+
+    await expect(postButton).toBeVisible({ timeout: 30_000 });
+    await expect(postButton).toBeEnabled();
+    await postButton.click();
+
+    const confirmationMessage = this.page.locator('div[id$="ap1:userRes"]');
+
+    await expect(confirmationMessage).toBeVisible({ timeout: 60_000 });
+    await expect(confirmationMessage).toHaveText(
+      /^Your process \d+ has been submitted\.$/,
+    );
+
+    const messageText = (await confirmationMessage.textContent())?.trim();
+    const postingProcessId = messageText?.match(
+      /^Your process (\d+) has been submitted\.$/,
+    )?.[1];
+
+    if (!postingProcessId) {
+      throw new Error(
+        "Post confirmation did not contain the submitted process ID",
+      );
+    }
+
+    const okButton = this.page.locator(
+      'button[id$="userResponsePopupDialogButtonOk"]',
+    );
+
+    await expect(okButton).toBeVisible({ timeout: 30_000 });
+    await expect(okButton).toHaveText("OK");
+    await okButton.click();
+    await expect(confirmationMessage).toBeHidden({ timeout: 30_000 });
+
+    return postingProcessId;
   }
 
   // Journal approval history
