@@ -95,4 +95,22 @@ test("GL 4.1.3 - user can submit Import Journals", async (
     importData.ledger,
   );
   await editJournalPage.waitForEditJournalPage();
+  await editJournalPage.verifyImportedJournalPrePostState();
+
+  const postingProcessId = await editJournalPage.postAutoApprovedJournal();
+
+  console.log(`Post Journals process ID: ${postingProcessId}`);
+  await testInfo.attach("Post Journals process ID", {
+    body: postingProcessId,
+    contentType: "text/plain",
+  });
+
+  await editJournalPage.returnToManageJournals();
+  await manageJournalsPage.waitForJournalFinalStateByNameOrPrefixAndLedger(
+    journalBatchName,
+    importData.ledger,
+    "Posted",
+    "Not Reversible - Reversal information is not available",
+    postingProcessId,
+  );
 });

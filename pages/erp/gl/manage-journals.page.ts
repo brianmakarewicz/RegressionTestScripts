@@ -243,6 +243,65 @@ export class ManageJournalsPage {
   }
 
   /**
+   * Refreshes Manage Journals until both final values appear in the same
+   * batch-name-prefix and ledger result row.
+   */
+  async waitForJournalFinalStateByNameOrPrefixAndLedger(
+    journalNameOrPrefix: string,
+    ledgerName: string,
+    expectedBatchStatus: string,
+    expectedReversibleDetail: string,
+    postingProcessId: string,
+  ): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          await this.submitJournalBatchSearch(journalNameOrPrefix);
+
+          const matchingRow = this.journalRowForLedgerByNameOrPrefix(
+            journalNameOrPrefix,
+            ledgerName,
+          );
+
+          if ((await matchingRow.count()) !== 1) {
+            return false;
+          }
+
+          const batchIsPosted = await matchingRow
+            .getByText(expectedBatchStatus, { exact: true })
+            .isVisible();
+          const reversibleDetailMatches = await matchingRow
+            .getByText(expectedReversibleDetail, { exact: true })
+            .isVisible();
+
+          return batchIsPosted && reversibleDetailMatches;
+        },
+        {
+          message:
+            `Expected ${journalNameOrPrefix} in ${ledgerName} to reach ` +
+            `${expectedBatchStatus} with ${expectedReversibleDetail} after ` +
+            `process ${postingProcessId}`,
+          timeout: 180_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(true);
+
+    const matchingRow = this.journalRowForLedgerByNameOrPrefix(
+      journalNameOrPrefix,
+      ledgerName,
+    );
+
+    await expect(matchingRow).toHaveCount(1);
+    await expect(
+      matchingRow.getByText(expectedBatchStatus, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      matchingRow.getByText(expectedReversibleDetail, { exact: true }),
+    ).toBeVisible();
+  }
+
+  /**
    * Opens the Journal link in the result row matched by name prefix and ledger.
    */
   async openJournalForLedgerByNameOrPrefix(
