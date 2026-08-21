@@ -60,6 +60,16 @@ export function loadJournalReversalData(
       errors,
     ),
     ledger: readRequiredString(parsedData.ledger, "ledger", errors),
+    reversalPeriod: readRequiredString(
+      parsedData.reversalPeriod,
+      "reversalPeriod",
+      errors,
+    ),
+    reversalMethod: readRequiredString(
+      parsedData.reversalMethod,
+      "reversalMethod",
+      errors,
+    ),
   };
 
   if (errors.length > 0) {

@@ -4,4 +4,8 @@ export interface JournalReversalData {
   sourceJournalBatchName: string;
   /** Primary ledger row used to avoid matching a reporting-ledger journal. */
   ledger: string;
+  /** Tester-selected accounting period in which Oracle creates the reversal. */
+  reversalPeriod: string;
+  /** Debit/credit treatment Oracle applies to the generated reversal. */
+  reversalMethod: string;
 }

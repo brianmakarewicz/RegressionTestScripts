@@ -165,6 +165,44 @@ export class EditJournalPage {
     ).toBeVisible({ timeout: 30_000 });
   }
 
+  /** Selects the tester-configured period from Oracle's searchable LOV. */
+  async selectReversalPeriod(reversalPeriod: string): Promise<void> {
+    const reversalPeriodTextbox = this.page.getByRole("textbox", {
+      name: "Reversal Period",
+      exact: true,
+    });
+
+    await expect(reversalPeriodTextbox).toBeVisible({ timeout: 30_000 });
+    await reversalPeriodTextbox.click();
+    await reversalPeriodTextbox.fill(reversalPeriod);
+
+    // Select the exact filtered result. ArrowDown can highlight Oracle's
+    // current or recently used period instead of the value just entered.
+    const reversalPeriodOption = this.page.getByRole("gridcell", {
+      name: reversalPeriod,
+      exact: true,
+    });
+
+    await expect(reversalPeriodOption.first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await reversalPeriodOption.first().click();
+
+    await expect(reversalPeriodTextbox).toHaveValue(reversalPeriod);
+  }
+
+  /** Selects how Oracle should construct the reversing debit/credit lines. */
+  async selectReversalMethod(reversalMethod: string): Promise<void> {
+    const reversalMethodSelect = this.page.locator('[id$="soc1::content"]');
+
+    await expect(reversalMethodSelect).toBeVisible({ timeout: 30_000 });
+    await expect(reversalMethodSelect).toHaveJSProperty("tagName", "SELECT");
+    await reversalMethodSelect.selectOption({ label: reversalMethod });
+    await expect(reversalMethodSelect.locator("option:checked")).toHaveText(
+      reversalMethod,
+    );
+  }
+
   async verifyReversalPeriod(expectedPeriod: string): Promise<void> {
     const reversalPeriod = this.page.locator(
       '[id$="ReversePeriodCLOV:sis1:is1::content"]',
@@ -208,6 +246,19 @@ export class EditJournalPage {
 
     await expect(reversalStatusRow).toBeVisible({ timeout: 30_000 });
     await expect(reversalStatusRow).toContainText(expectedStatus);
+  }
+
+  /** Saves reversal configuration without closing or reversing the journal. */
+  async saveJournal(): Promise<void> {
+    const saveButton = this.page.getByRole("button", {
+      name: "Save",
+      exact: true,
+    });
+
+    await expect(saveButton).toBeVisible({ timeout: 30_000 });
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await expect(saveButton).toBeEnabled({ timeout: 30_000 });
   }
 
   /**

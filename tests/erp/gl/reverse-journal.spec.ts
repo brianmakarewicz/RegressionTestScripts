@@ -7,7 +7,7 @@ import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { loadJournalReversalData } from "../../../utils/test-data/load-journal-reversal-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
-test("GL-08 - user can find an approved reversible journal", async (
+test("GL-08 - user can configure an approved journal for reversal", async (
   { page },
   testInfo,
 ) => {
@@ -79,4 +79,16 @@ test("GL-08 - user can find an approved reversible journal", async (
     journalData.sourceJournalBatchName,
   );
   await editJournalPage.verifyLedger(journalData.ledger);
+
+  // Configure and save the tester-selected reversal options. This iteration
+  // deliberately stops before Journal Actions > Reverse consumes the journal.
+  await editJournalPage.showJournalDetails();
+  await editJournalPage.openReversalTab();
+  await editJournalPage.selectReversalPeriod(journalData.reversalPeriod);
+  await editJournalPage.selectReversalMethod(journalData.reversalMethod);
+  await editJournalPage.saveJournal();
+
+  await editJournalPage.verifyReversalPeriod(journalData.reversalPeriod);
+  await editJournalPage.verifyReversalMethod(journalData.reversalMethod);
+  await editJournalPage.verifyReversalStatus("Not reversed");
 });
