@@ -7,7 +7,7 @@ import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { loadJournalReversalData } from "../../../utils/test-data/load-journal-reversal-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
-test("GL-08 - user can configure an approved journal for reversal", async (
+test("GL-08 - user can reverse an approved journal", async (
   { page },
   testInfo,
 ) => {
@@ -91,4 +91,23 @@ test("GL-08 - user can configure an approved journal for reversal", async (
   await editJournalPage.verifyReversalPeriod(journalData.reversalPeriod);
   await editJournalPage.verifyReversalMethod(journalData.reversalMethod);
   await editJournalPage.verifyReversalStatus("Not reversed");
+
+  // Consume the configured source journal by creating its next-period
+  // reversal. Posting and approval remain outside this iteration.
+  const reversalProcessId = await editJournalPage.reverseJournal();
+
+  console.log(`Reversal process ID: ${reversalProcessId}`);
+  await testInfo.attach("GL-08 reversal process ID", {
+    body: reversalProcessId,
+    contentType: "text/plain",
+  });
+
+  await editJournalPage.returnToManageJournals();
+
+  await manageJournalsPage.waitForUnpostedReversalJournal({
+    sourceJournalId,
+    ledger: journalData.ledger,
+    reversalPeriod: journalData.reversalPeriod,
+    processId: reversalProcessId,
+  });
 });

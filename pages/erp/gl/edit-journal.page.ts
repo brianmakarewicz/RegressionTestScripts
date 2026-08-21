@@ -262,6 +262,55 @@ export class EditJournalPage {
   }
 
   /**
+   * Creates the configured reversal journal and returns Oracle's process ID.
+   */
+  async reverseJournal(): Promise<string> {
+    const journalActionsLink = this.page.getByRole("link", {
+      name: "Journal Actions",
+      exact: true,
+    });
+
+    await expect(journalActionsLink).toBeVisible({ timeout: 30_000 });
+    await journalActionsLink.click();
+
+    const reverseMenuItem = this.page.getByRole("menuitem", {
+      name: "Reverse",
+      exact: true,
+    });
+
+    await expect(reverseMenuItem).toBeVisible({ timeout: 30_000 });
+    await reverseMenuItem.click();
+
+    const confirmationMessage = this.page.locator('div[id$="userRes"]');
+
+    await expect(confirmationMessage).toBeVisible({ timeout: 60_000 });
+    await expect(confirmationMessage).toHaveText(
+      /^Your process \d+ has been submitted\.$/,
+    );
+
+    const confirmationText = (await confirmationMessage.textContent())?.trim();
+    const processId = confirmationText?.match(
+      /^Your process (\d+) has been submitted\.$/,
+    )?.[1];
+
+    if (!processId) {
+      throw new Error(
+        `Reverse confirmation did not contain a process ID: ${confirmationText}`,
+      );
+    }
+
+    const okButton = this.page.locator(
+      'button[id$="userResponsePopupDialogButtonOk"]',
+    );
+
+    await expect(okButton).toBeVisible({ timeout: 30_000 });
+    await okButton.click();
+    await expect(confirmationMessage).toBeHidden({ timeout: 30_000 });
+
+    return processId;
+  }
+
+  /**
    * Saves the open journal and closes the Edit Journal page.
    */
   async saveAndClose(): Promise<void> {

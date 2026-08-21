@@ -149,6 +149,83 @@ export class ManageJournalsPage {
     await searchButton.click();
   }
 
+  /** Searches for the unposted reversal created from a Manual journal ID. */
+  private async submitReversalJournalSearch(
+    sourceJournalId: string,
+    reversalPeriod: string,
+  ): Promise<void> {
+    await this.ensureSearchPanelExpanded();
+
+    const journalBatchTextbox = this.page.getByRole("textbox", {
+      name: "Journal Batch",
+      exact: true,
+    });
+    const journalBatchOperator = this.page.getByRole("combobox", {
+      name: "Journal Batch Operator",
+      exact: true,
+    });
+
+    await expect(journalBatchOperator).toBeVisible({ timeout: 30_000 });
+    await journalBatchOperator.selectOption({ label: "Contains" });
+    await expect(
+      journalBatchOperator.locator("option:checked"),
+    ).toHaveText("Contains");
+    await journalBatchTextbox.fill(sourceJournalId);
+    await expect(journalBatchTextbox).toHaveValue(sourceJournalId);
+
+    const accountingPeriodCombobox = this.page.getByRole("combobox", {
+      name: "Accounting Period",
+      exact: true,
+    });
+
+    await accountingPeriodCombobox.fill(reversalPeriod);
+    // This Manage Journals search field commits its typed value on Tab. It
+    // does not expose the gridcell suggestions used by the Edit Journal LOV.
+    await accountingPeriodCombobox.press("Tab");
+    await expect(accountingPeriodCombobox).toHaveValue(reversalPeriod);
+
+    const batchStatusSelect = this.page.getByRole("combobox", {
+      name: "Batch Status",
+      exact: true,
+    });
+
+    await expect(batchStatusSelect).toBeVisible({ timeout: 30_000 });
+    await batchStatusSelect.selectOption({ label: "Unposted" });
+    await expect(batchStatusSelect.locator("option:checked")).toHaveText(
+      "Unposted",
+    );
+
+    const searchButton = this.page.getByRole("button", {
+      name: "Search",
+      exact: true,
+    });
+
+    await expect(searchButton).toBeEnabled();
+    await searchButton.click();
+  }
+
+  private reversalJournalRow(
+    sourceJournalId: string,
+    ledgerName: string,
+  ) {
+    const escapedJournalId = sourceJournalId.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
+    const searchResultsTable = this.page.getByRole("table", {
+      name: "Search Results",
+      exact: true,
+    });
+
+    return searchResultsTable
+      .locator('a[id$="commandLink3"]')
+      .filter({
+        hasText: new RegExp(`^Reverses Manual ${escapedJournalId}\\b`),
+      })
+      .locator("xpath=ancestor::tr[1]")
+      .filter({ hasText: ledgerName });
+  }
+
   // Journal batch result actions
   async searchForJournalBatch(journalBatchName: string): Promise<void> {
     await this.submitJournalBatchSearch(journalBatchName);
@@ -225,6 +302,75 @@ export class ManageJournalsPage {
     }
 
     return journalName;
+  }
+
+  /**
+   * Polls until Oracle exposes the unposted primary-ledger reversal and then
+   * validates the business state that distinguishes a generated reversal.
+   */
+  async waitForUnpostedReversalJournal(parameters: {
+    sourceJournalId: string;
+    ledger: string;
+    reversalPeriod: string;
+    processId: string;
+  }): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          await this.submitReversalJournalSearch(
+            parameters.sourceJournalId,
+            parameters.reversalPeriod,
+          );
+
+          return this.reversalJournalRow(
+            parameters.sourceJournalId,
+            parameters.ledger,
+          ).count();
+        },
+        {
+          message:
+            `Expected an unposted reversal containing Manual ` +
+            `${parameters.sourceJournalId} in ${parameters.ledger} after ` +
+            `reversal process ${parameters.processId}`,
+          timeout: 120_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(1);
+
+    const reversalRow = this.reversalJournalRow(
+      parameters.sourceJournalId,
+      parameters.ledger,
+    );
+    const escapedJournalId = parameters.sourceJournalId.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
+    const reversalBatchLink = reversalRow.locator(
+      'a[id$="commandLink4"]',
+    );
+
+    await expect(reversalRow).toHaveCount(1);
+    await expect(reversalBatchLink).toHaveText(
+      new RegExp(
+        `^Reverses Manual ${escapedJournalId}\\b.*\\s${parameters.processId}$`,
+      ),
+    );
+    await expect(
+      reversalRow.getByText("Unposted", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reversalRow.getByText("Required", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reversalRow.getByText(parameters.reversalPeriod, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      reversalRow.getByText(
+        "Not Reversible - Batch not posted",
+        { exact: true },
+      ),
+    ).toBeVisible();
   }
 
   /**
