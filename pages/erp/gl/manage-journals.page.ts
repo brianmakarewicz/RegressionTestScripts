@@ -163,6 +163,71 @@ export class ManageJournalsPage {
   }
 
   /**
+   * Verifies that the configured GL-08 source journal is still eligible for
+   * reversal. Once this state changes, the test data must name a new journal.
+   */
+  async verifySourceJournalIsReversible(
+    journalBatchName: string,
+    ledgerName: string,
+  ): Promise<void> {
+    const matchingRow = this.journalRowForLedger(
+      journalBatchName,
+      ledgerName,
+    );
+    const staleDataMessage =
+      `${journalBatchName} in ${ledgerName} must be Posted, Approved, and ` +
+      "Reversible. If this journal was already reversed, update " +
+      "journal-reversal.json with another eligible source journal.";
+
+    await expect(matchingRow, staleDataMessage).toHaveCount(1, {
+      timeout: 30_000,
+    });
+    await expect(
+      matchingRow.getByText("Posted", { exact: true }),
+      staleDataMessage,
+    ).toBeVisible();
+    await expect(
+      matchingRow.getByText("Approved", { exact: true }),
+      staleDataMessage,
+    ).toBeVisible();
+    await expect(
+      matchingRow.getByText("Reversible", { exact: true }),
+      staleDataMessage,
+    ).toBeVisible();
+  }
+
+  /**
+   * Returns the Journal value from the exact batch-and-ledger result row.
+   * This is intentionally scoped away from reporting-ledger rows.
+   */
+  async getJournalNameForLedger(
+    journalBatchName: string,
+    ledgerName: string,
+  ): Promise<string> {
+    const matchingRow = this.journalRowForLedger(
+      journalBatchName,
+      ledgerName,
+    );
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+
+    const journalLink = matchingRow.locator('a[id$="commandLink3"]');
+
+    await expect(journalLink).toHaveCount(1);
+    await expect(journalLink).toBeVisible();
+
+    const journalName = (await journalLink.textContent())?.trim();
+
+    if (!journalName) {
+      throw new Error(
+        `Journal name was empty for ${journalBatchName} in ${ledgerName}`,
+      );
+    }
+
+    return journalName;
+  }
+
+  /**
    * Finds a journal result whose visible name is either the exact supplied
    * text or begins with it. This supports both user-assigned names and names
    * that Oracle extends during import.

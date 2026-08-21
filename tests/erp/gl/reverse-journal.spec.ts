@@ -1,0 +1,82 @@
+import path from "node:path";
+import { test } from "@playwright/test";
+import { env } from "../../../config/environment";
+import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
+import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
+import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
+import { loadJournalReversalData } from "../../../utils/test-data/load-journal-reversal-data";
+import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
+
+test("GL-08 - user can find an approved reversible journal", async (
+  { page },
+  testInfo,
+) => {
+  test.setTimeout(120_000);
+
+  const journalDataFilePath = path.join(
+    "test-data",
+    "clients",
+    env.clientAlias,
+    env.environment,
+    "gl",
+    "journal-reversal.json",
+  );
+  const journalData = loadJournalReversalData(journalDataFilePath);
+
+  const authentication = new AuthenticationWorkflow(page);
+  const navigatorPage = new FusionNavigatorPage(page);
+  const manageJournalsPage = new ManageJournalsPage(page);
+  const editJournalPage = new EditJournalPage(page);
+
+  // Sign in using the selected initial environment (demo/dev for this test).
+  await authentication.login();
+  await navigatorPage.goToManageJournalsPage();
+
+  // Stop before making changes if the configured source journal was consumed.
+  await manageJournalsPage.searchForJournalBatch(
+    journalData.sourceJournalBatchName,
+  );
+  await manageJournalsPage.verifySourceJournalIsReversible(
+    journalData.sourceJournalBatchName,
+    journalData.ledger,
+  );
+
+  // Capture the stable Manual journal ID used to locate its future reversal.
+  const sourceJournalName = await manageJournalsPage.getJournalNameForLedger(
+    journalData.sourceJournalBatchName,
+    journalData.ledger,
+  );
+  const sourceJournalId = sourceJournalName.match(/\bManual\s+(\d+)\b/i)?.[1];
+
+  if (!sourceJournalId) {
+    throw new Error(
+      `Expected journal name to contain "Manual <ID>", but found: ${sourceJournalName}`,
+    );
+  }
+
+  console.log(`Source Journal ID: ${sourceJournalId}`);
+  await testInfo.attach("GL-08 source journal", {
+    body: JSON.stringify(
+      {
+        batchName: journalData.sourceJournalBatchName,
+        journalName: sourceJournalName,
+        journalId: sourceJournalId,
+        ledger: journalData.ledger,
+      },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
+
+  // Open the exact primary-ledger journal for the next iterative slice.
+  await manageJournalsPage.openJournalForLedger(
+    journalData.sourceJournalBatchName,
+    journalData.ledger,
+  );
+  await editJournalPage.waitForEditJournalPage();
+  await editJournalPage.verifyJournalBatchName(
+    journalData.sourceJournalBatchName,
+  );
+  await editJournalPage.verifyLedger(journalData.ledger);
+});
