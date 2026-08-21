@@ -313,7 +313,7 @@ export class ManageJournalsPage {
     ledger: string;
     reversalPeriod: string;
     processId: string;
-  }): Promise<void> {
+  }): Promise<string> {
     await expect
       .poll(
         async () => {
@@ -371,6 +371,40 @@ export class ManageJournalsPage {
         { exact: true },
       ),
     ).toBeVisible();
+
+    const reversalBatchName = (await reversalBatchLink.textContent())?.trim();
+
+    if (!reversalBatchName) {
+      throw new Error(
+        `Reversal batch name was empty for process ${parameters.processId}`,
+      );
+    }
+
+    return reversalBatchName;
+  }
+
+  /** Selects the exact primary-ledger reversal row for Post Batch. */
+  async selectReversalJournalForPosting(
+    sourceJournalId: string,
+    ledgerName: string,
+  ): Promise<void> {
+    const reversalRow = this.reversalJournalRow(
+      sourceJournalId,
+      ledgerName,
+    );
+
+    await expect(reversalRow).toHaveCount(1, { timeout: 30_000 });
+    await expect(
+      reversalRow.getByText("Unposted", { exact: true }),
+    ).toBeVisible();
+
+    // Select through the blank leading cell so neither journal hyperlink is
+    // activated while preparing the row for the toolbar action.
+    const selectionCell = reversalRow.locator("td").first();
+
+    await expect(selectionCell).toBeVisible();
+    await selectionCell.click();
+    await expect(reversalRow).toHaveClass(/p_AFSelected/);
   }
 
   /**

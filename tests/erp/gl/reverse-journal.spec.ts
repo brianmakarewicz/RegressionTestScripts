@@ -7,7 +7,7 @@ import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { loadJournalReversalData } from "../../../utils/test-data/load-journal-reversal-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
-test("GL-08 - user can reverse an approved journal", async (
+test("GL-08 - user can reverse a journal and submit it for posting", async (
   { page },
   testInfo,
 ) => {
@@ -93,7 +93,7 @@ test("GL-08 - user can reverse an approved journal", async (
   await editJournalPage.verifyReversalStatus("Not reversed");
 
   // Consume the configured source journal by creating its next-period
-  // reversal. Posting and approval remain outside this iteration.
+  // reversal. Approval remains outside this iteration.
   const reversalProcessId = await editJournalPage.reverseJournal();
 
   console.log(`Reversal process ID: ${reversalProcessId}`);
@@ -104,10 +104,25 @@ test("GL-08 - user can reverse an approved journal", async (
 
   await editJournalPage.returnToManageJournals();
 
-  await manageJournalsPage.waitForUnpostedReversalJournal({
-    sourceJournalId,
-    ledger: journalData.ledger,
-    reversalPeriod: journalData.reversalPeriod,
-    processId: reversalProcessId,
+  const reversalBatchName =
+    await manageJournalsPage.waitForUnpostedReversalJournal({
+      sourceJournalId,
+      ledger: journalData.ledger,
+      reversalPeriod: journalData.reversalPeriod,
+      processId: reversalProcessId,
+    });
+
+  console.log(`Reversal Journal Batch: ${reversalBatchName}`);
+  await testInfo.attach("GL-08 reversal journal batch", {
+    body: reversalBatchName,
+    contentType: "text/plain",
   });
+
+  // Select the generated primary-ledger reversal and request posting. Oracle
+  // routes it for approval; switching to glApprover is the next iteration.
+  await manageJournalsPage.selectReversalJournalForPosting(
+    sourceJournalId,
+    journalData.ledger,
+  );
+  await manageJournalsPage.postSelectedJournalBatch();
 });
