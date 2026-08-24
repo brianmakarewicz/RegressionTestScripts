@@ -206,7 +206,7 @@ No code changes are required when switching between clients or environments.
 - `AUTHENTICATION_ALIAS` optionally selects a different local credential profile.
 - If `AUTHENTICATION_ALIAS` is omitted, it defaults to `CLIENT_ALIAS`.
 
-This separation supports workflows in which multiple users act on the same client data. For example, an initiating user and an approver can share JSON under one client folder while loading different credentials.
+This separation was needed because some workflows use multiple users against the same client data. Previously, selecting an approver as the client alias also pointed the test toward an approver-specific JSON folder. That incorrectly coupled a user's credentials to functional test data and encouraged duplicate client data. The separate authentication alias allows an initiating user and an approver to share one client JSON folder while loading different credentials.
 
 ```powershell
 $env:CLIENT_ALIAS="c001"
@@ -243,16 +243,15 @@ Do not change `CLIENT_ALIAS` merely to select another user. Doing so would also 
 
 # Environment Variables
 
-Each local environment file contains only environment selection metadata and authentication/bootstrap values:
+Each local environment file contains only Oracle authentication/bootstrap values:
 
 ```env
-CLIENT_ALIAS=c001
-ENVIRONMENT=dev
-
 ORACLE_BASE_URL=https://example.oraclecloud.com
 ORACLE_USERNAME=myusername
 ORACLE_PASSWORD=mypassword
 ```
+
+Set `CLIENT_ALIAS`, `ENVIRONMENT`, and optional `AUTHENTICATION_ALIAS` in the terminal before running Playwright. These selectors cannot be supplied by the selected `.env` file because the framework needs them first to determine which file to load.
 
 Functional test values such as ledgers, accounting periods, journal names, batch names, and safety flags do not belong in `.env` files. Store those values in the applicable client/environment/module JSON file under:
 
@@ -402,7 +401,9 @@ Real environment-specific data remains excluded from source control.
 
 # Creating a New Client Environment
 
-To add a new client environment, create a new local file.
+To add a new client environment:
+
+1. Copy `environments/.env.example` to a local file named for the client alias and environment.
 
 Example:
 
@@ -413,15 +414,42 @@ environments/.env.c008.dev
 Contents:
 
 ```env
-CLIENT_ALIAS=c008
-ENVIRONMENT=dev
-
 ORACLE_BASE_URL=<client url>
 ORACLE_USERNAME=<username>
 ORACLE_PASSWORD=<password>
 ```
 
-No code changes are required.
+2. Create the client test-data directory and the module JSON files required by the tests:
+
+```text
+test-data/clients/c008/dev/<module>/
+```
+
+3. Select the client and environment when running the tests:
+
+```powershell
+$env:CLIENT_ALIAS="c008"
+$env:ENVIRONMENT="dev"
+Remove-Item Env:AUTHENTICATION_ALIAS -ErrorAction SilentlyContinue
+npx playwright test
+```
+
+4. If a workflow needs another user, create another credential file without creating another client test-data folder:
+
+```text
+environments/.env.c008approver.dev
+```
+
+Run that step of the workflow with the same client alias and the alternate authentication alias:
+
+```powershell
+$env:CLIENT_ALIAS="c008"
+$env:ENVIRONMENT="dev"
+$env:AUTHENTICATION_ALIAS="c008Approver"
+npx playwright test <approval-test-path>
+```
+
+Both users read functional data from `test-data/clients/c008/dev/`. No code changes are required.
 
 ---
 
