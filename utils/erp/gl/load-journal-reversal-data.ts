@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type JournalReversalData } from "../../types/erp/gl/journal-reversal-data";
+import { type JournalReversalData } from "../../../types/erp/gl/journal-reversal-data";
 
 type JsonObject = Record<string, unknown>;
 

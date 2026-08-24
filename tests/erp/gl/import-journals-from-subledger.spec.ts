@@ -6,7 +6,7 @@ import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processe
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ImportJournalsPage } from "../../../pages/erp/gl/import-journals.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
-import { loadImportJournalsData } from "../../../utils/test-data/load-import-journals-data";
+import { loadImportJournalsData } from "../../../utils/erp/gl/load-import-journals-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.1.3 - user can submit Import Journals", async (

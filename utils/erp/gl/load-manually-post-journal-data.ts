@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type ManuallyPostJournalData } from "../../types/erp/gl/manually-post-journal-data";
+import { type ManuallyPostJournalData } from "../../../types/erp/gl/manually-post-journal-data";
 
 type JsonObject = Record<string, unknown>;
 

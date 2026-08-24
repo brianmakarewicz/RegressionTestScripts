@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type JournalApprovalData } from "../../types/erp/gl/journal-approval-data";
+import { type JournalApprovalData } from "../../../types/erp/gl/journal-approval-data";
 
 type JsonObject = Record<string, unknown>;
 

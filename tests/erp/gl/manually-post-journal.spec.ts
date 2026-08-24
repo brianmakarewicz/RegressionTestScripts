@@ -5,7 +5,7 @@ import { AuthenticationWorkflow } from "../../../workflows/authentication.workfl
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
-import { loadManuallyPostJournalData } from "../../../utils/test-data/load-manually-post-journal-data";
+import { loadManuallyPostJournalData } from "../../../utils/erp/gl/load-manually-post-journal-data";
 
 test("GL 4.4.4 - authorized user can manually post a journal", async ({
   page,

@@ -5,7 +5,7 @@ import { AuthenticationWorkflow } from "../../../workflows/authentication.workfl
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
-import { loadJournalApprovalData } from "../../../utils/test-data/load-journal-approval-data";
+import { loadJournalApprovalData } from "../../../utils/erp/gl/load-journal-approval-data";
 
 test("user can initiate journal approval with posting", async ({ page }) => {
   test.setTimeout(180_000);
