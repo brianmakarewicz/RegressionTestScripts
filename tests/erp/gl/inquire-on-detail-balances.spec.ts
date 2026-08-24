@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { InquireOnDetailBalancesPage } from "../../../pages/erp/gl/inquire-on-detail-balances.page";
@@ -14,7 +14,7 @@ test("user can search detail balances", async ({ page }) => {
   const dataFilePath = path.join(
     "test-data",
     "clients",
-    env.clientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "inquire-on-detail-balances.json",

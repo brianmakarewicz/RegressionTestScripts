@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { JournalApprovalsPage } from "../../../pages/erp/gl/journal-approvals.page";
@@ -11,11 +11,10 @@ import { loadWithdrawDeleteJournalsData } from "../../../utils/erp/gl/load-withd
 test("user can withdraw and delete a journal batch", async ({ page }) => {
   test.setTimeout(180_000);
 
-  const testDataClientAlias = "demo";
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    testDataClientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "withdraw-delete-journals.json",
