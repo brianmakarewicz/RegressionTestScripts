@@ -124,5 +124,5 @@ test("GL-08 - user can reverse a journal and submit it for posting", async (
     sourceJournalId,
     journalData.ledger,
   );
-  await manageJournalsPage.postSelectedJournalBatch();
+  await manageJournalsPage.postSelectedReversalJournalBatch();
 });
