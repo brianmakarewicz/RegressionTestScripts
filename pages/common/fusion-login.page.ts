@@ -1,5 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { env } from "../../config/environment";
+import { type OracleLoginData } from "../../types/common/oracle-login-data";
 
 /**
  * Represents the Oracle Fusion sign-in page.
@@ -11,16 +12,16 @@ export class FusionLoginPage {
   constructor(private readonly page: Page) {}
 
   // Environment navigation and sign-in page readiness
-  async goto(): Promise<void> {
+  async goto(baseUrl = env.baseUrl): Promise<void> {
     // Fail before browser navigation when the target environment is not configured.
-    expect(env.baseUrl, "ORACLE_BASE_URL must be configured").toBeTruthy();
+    expect(baseUrl, "ORACLE_BASE_URL must be configured").toBeTruthy();
 
     const usernameTextbox = this.page.getByRole("textbox", {
       name: "Username",
       exact: true,
     });
 
-    await this.page.goto(env.baseUrl!, { waitUntil: "domcontentloaded" });
+    await this.page.goto(baseUrl!, { waitUntil: "domcontentloaded" });
 
     // OCI occasionally completes the redirect without rendering the sign-in
     // form. Retry the configured entry URL once instead of continuing against
@@ -28,7 +29,7 @@ export class FusionLoginPage {
     try {
       await expect(usernameTextbox).toBeVisible({ timeout: 30_000 });
     } catch {
-      await this.page.goto(env.baseUrl!, { waitUntil: "domcontentloaded" });
+      await this.page.goto(baseUrl!, { waitUntil: "domcontentloaded" });
       await expect(usernameTextbox).toBeVisible({ timeout: 30_000 });
     }
 
@@ -42,17 +43,22 @@ export class FusionLoginPage {
   }
 
   // Credential submission
-  async login(): Promise<void> {
+  async login(
+    credentials?: Pick<OracleLoginData, "username" | "password">,
+  ): Promise<void> {
+    const username = credentials?.username ?? env.username;
+    const password = credentials?.password ?? env.password;
+
     // Validate both credentials before interacting with the sign-in form.
-    expect(env.username, "ORACLE_USERNAME must be configured").toBeTruthy();
-    expect(env.password, "ORACLE_PASSWORD must be configured").toBeTruthy();
+    expect(username, "ORACLE_USERNAME must be configured").toBeTruthy();
+    expect(password, "ORACLE_PASSWORD must be configured").toBeTruthy();
 
     await this.page
       .getByRole("textbox", { name: "Username", exact: true })
-      .fill(env.username!);
+      .fill(username!);
     await this.page
       .getByRole("textbox", { name: "Password", exact: true })
-      .fill(env.password!);
+      .fill(password!);
     await this.page.getByRole("button", { name: "Next", exact: true }).click();
   }
 
