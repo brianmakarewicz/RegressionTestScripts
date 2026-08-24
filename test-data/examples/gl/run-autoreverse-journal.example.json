@@ -1,0 +1,8 @@
+{
+  "journalBatchName": "EXAMPLE_APPROVED_REVERSIBLE_BATCH",
+  "ledger": "Example Primary Ledger",
+  "dataAccessSet": "Example Data Access Set",
+  "reversalPeriod": "06-26",
+  "category": "Accrual",
+  "reversalMethod": "Switch DR or CR"
+}
