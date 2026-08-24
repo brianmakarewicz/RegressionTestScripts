@@ -4,7 +4,7 @@ import { env } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
-import { loadApproveJournalData } from "../../../utils/test-data/load-approve-journal-data";
+import { loadJournalApprovalData } from "../../../utils/test-data/load-journal-approval-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.4.2 - authorized user can approve a journal", async ({ page }) => {
@@ -19,9 +19,9 @@ test("GL 4.4.2 - authorized user can approve a journal", async ({ page }) => {
     testDataClientAlias,
     env.environment,
     "gl",
-    "approve-journal.json",
+    "journal-approval.json",
   );
-  const { journalBatchName } = loadApproveJournalData(journalDataFilePath);
+  const { journalBatchName } = loadJournalApprovalData(journalDataFilePath);
 
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);

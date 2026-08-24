@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type ApproveJournalData } from "../../types/erp/gl/approve-journal-data";
+import { type JournalApprovalData } from "../../types/erp/gl/journal-approval-data";
 
 type JsonObject = Record<string, unknown>;
 
@@ -8,17 +8,19 @@ function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Loads and validates the environment-specific journal approval data. */
-export function loadApproveJournalData(filePath: string): ApproveJournalData {
+/** Loads and validates data shared by the journal approval workflow. */
+export function loadJournalApprovalData(
+  filePath: string,
+): JournalApprovalData {
   if (!filePath.trim()) {
-    throw new Error("Approve Journal data file path is required");
+    throw new Error("Journal Approval data file path is required");
   }
 
   const resolvedFilePath = path.resolve(process.cwd(), filePath);
 
   if (!fs.existsSync(resolvedFilePath)) {
     throw new Error(
-      `Approve Journal data file was not found: ${resolvedFilePath}`,
+      `Journal Approval data file was not found: ${resolvedFilePath}`,
     );
   }
 
@@ -29,12 +31,12 @@ export function loadApproveJournalData(filePath: string): ApproveJournalData {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Approve Journal data file contains invalid JSON: ${message}`,
+      `Journal Approval data file contains invalid JSON: ${message}`,
     );
   }
 
   if (!isJsonObject(parsedData)) {
-    throw new Error("Approve Journal data must be a JSON object");
+    throw new Error("Journal Approval data must be a JSON object");
   }
 
   if (
@@ -42,7 +44,7 @@ export function loadApproveJournalData(filePath: string): ApproveJournalData {
     parsedData.journalBatchName.trim() === ""
   ) {
     throw new Error(
-      "Approve Journal data validation failed:\n- journalBatchName must be a non-empty string",
+      "Journal Approval data validation failed:\n- journalBatchName must be a non-empty string",
     );
   }
 
