@@ -20,4 +20,5 @@ export class AuthenticationWorkflow {
     // Login is complete only after the authenticated Fusion shell is ready.
     await this.loginPage.waitForFusionHomePage();
   }
+
 }
