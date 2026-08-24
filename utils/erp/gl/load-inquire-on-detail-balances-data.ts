@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type InquireOnDetailBalancesData } from "../../types/erp/gl/inquire-on-detail-balances-data";
+import { type InquireOnDetailBalancesData } from "../../../types/erp/gl/inquire-on-detail-balances-data";
 
 type JsonObject = Record<string, unknown>;
 

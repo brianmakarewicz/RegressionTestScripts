@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type JournalReversalData } from "../../types/erp/gl/journal-reversal-data";
+import { type RunAutoReverseJournalData } from "../../../types/erp/gl/run-autoreverse-journal-data";
 
 type JsonObject = Record<string, unknown>;
 
@@ -21,19 +21,19 @@ function readRequiredString(
   return value.trim();
 }
 
-/** Loads and validates the environment-specific source journal for GL-08. */
-export function loadJournalReversalData(
+/** Loads and validates environment-specific AutoReverse test data. */
+export function loadRunAutoReverseJournalData(
   filePath: string,
-): JournalReversalData {
+): RunAutoReverseJournalData {
   if (!filePath.trim()) {
-    throw new Error("Journal Reversal data file path is required");
+    throw new Error("Run AutoReverse Journal data file path is required");
   }
 
   const resolvedFilePath = path.resolve(process.cwd(), filePath);
 
   if (!fs.existsSync(resolvedFilePath)) {
     throw new Error(
-      `Journal Reversal data file was not found: ${resolvedFilePath}`,
+      `Run AutoReverse Journal data file was not found: ${resolvedFilePath}`,
     );
   }
 
@@ -44,27 +44,33 @@ export function loadJournalReversalData(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
-      `Journal Reversal data file contains invalid JSON: ${message}`,
+      `Run AutoReverse Journal data file contains invalid JSON: ${message}`,
     );
   }
 
   if (!isJsonObject(parsedData)) {
-    throw new Error("Journal Reversal data must be a JSON object");
+    throw new Error("Run AutoReverse Journal data must be a JSON object");
   }
 
   const errors: string[] = [];
-  const journalData: JournalReversalData = {
-    sourceJournalBatchName: readRequiredString(
-      parsedData.sourceJournalBatchName,
-      "sourceJournalBatchName",
+  const data: RunAutoReverseJournalData = {
+    journalBatchName: readRequiredString(
+      parsedData.journalBatchName,
+      "journalBatchName",
       errors,
     ),
     ledger: readRequiredString(parsedData.ledger, "ledger", errors),
+    dataAccessSet: readRequiredString(
+      parsedData.dataAccessSet,
+      "dataAccessSet",
+      errors,
+    ),
     reversalPeriod: readRequiredString(
       parsedData.reversalPeriod,
       "reversalPeriod",
       errors,
     ),
+    category: readRequiredString(parsedData.category, "category", errors),
     reversalMethod: readRequiredString(
       parsedData.reversalMethod,
       "reversalMethod",
@@ -74,9 +80,9 @@ export function loadJournalReversalData(
 
   if (errors.length > 0) {
     throw new Error(
-      `Journal Reversal data validation failed:\n- ${errors.join("\n- ")}`,
+      `Run AutoReverse Journal data validation failed:\n- ${errors.join("\n- ")}`,
     );
   }
 
-  return journalData;
+  return data;
 }

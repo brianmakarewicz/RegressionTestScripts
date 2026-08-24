@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { type ValidateJournalDetailsData } from "../../types/erp/gl/validate-journal-details-data";
+import { type ValidateJournalDetailsData } from "../../../types/erp/gl/validate-journal-details-data";
 
 // Runtime JSON shape and primitive field readers
 type JsonObject = Record<string, unknown>;

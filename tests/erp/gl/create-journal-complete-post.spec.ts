@@ -4,7 +4,7 @@ import { env } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { CreateJournalPage } from "../../../pages/erp/gl/create-journal.page";
-import { loadCreateJournalData } from "../../../utils/test-data/load-create-journal-data";
+import { loadCreateJournalData } from "../../../utils/erp/gl/load-create-journal-data";
 
 test("user can create, complete, and post a journal", async ({ page }) => {
   test.setTimeout(180_000);

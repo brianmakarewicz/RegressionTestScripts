@@ -1,18 +1,27 @@
+import path from "node:path";
 import { test } from "@playwright/test";
+import { env } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
+import { loadJournalApprovalData } from "../../../utils/erp/gl/load-journal-approval-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.4.2 - authorized user can approve a journal", async ({ page }) => {
   test.setTimeout(180_000);
 
-  // Require the exact batch configured for this approval run.
-  const journalBatchName = process.env.GL_JOURNAL_BATCH_NAME;
-
-  if (!journalBatchName) {
-    throw new Error("GL_JOURNAL_BATCH_NAME is required");
-  }
+  // glApprover is an authentication profile for the Demo client. Functional
+  // approval data remains in Demo's module-specific JSON directory.
+  const testDataClientAlias = "demo";
+  const journalDataFilePath = path.join(
+    "test-data",
+    "clients",
+    testDataClientAlias,
+    env.environment,
+    "gl",
+    "journal-approval.json",
+  );
+  const { journalBatchName } = loadJournalApprovalData(journalDataFilePath);
 
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);

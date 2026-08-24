@@ -1,0 +1,5 @@
+{
+  "journalBaseName": "EXAMPLE_SPREADSHEET_JOURNAL_BASE_NAME",
+  "ledger": "Example Primary Ledger",
+  "criteriaSet": "Example AutoPost Criteria Set"
+}

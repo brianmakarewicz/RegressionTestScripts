@@ -4,7 +4,7 @@ import {
   type CreateJournalData,
   type CreateJournalLineData,
   type JournalBalanceType,
-} from "../../types/erp/gl/create-journal-data";
+} from "../../../types/erp/gl/create-journal-data";
 
 // Runtime JSON shape and primitive field readers
 type JsonObject = Record<string, unknown>;
