@@ -622,6 +622,22 @@ export class ManageJournalsPage {
    * Submits the selected batch for approval with posting requested.
    */
   async postSelectedJournalBatch(): Promise<void> {
+    await this.submitSelectedJournalBatch(
+      "Your journal approval request has been submitted.",
+    );
+  }
+
+  /**
+   * Submits a reversal batch when the environment can either post it or route
+   * it for approval. GL-08 requires only Oracle's confirmation dialog.
+   */
+  async postSelectedReversalJournalBatch(): Promise<void> {
+    await this.submitSelectedJournalBatch();
+  }
+
+  private async submitSelectedJournalBatch(
+    expectedConfirmationMessage?: string,
+  ): Promise<void> {
     const postBatchButton = this.page.getByRole("button", {
       name: "Post Batch",
       exact: true,
@@ -631,10 +647,18 @@ export class ManageJournalsPage {
     await expect(postBatchButton).toBeEnabled();
     await postBatchButton.click();
 
-    const confirmationHeading = this.page.locator('div[id$="d2::_ttxt"]');
+    const confirmationHeading = this.page
+      .locator('div[id$="::_ttxt"]')
+      .filter({ hasText: /^Confirmation$/ });
 
     await expect(confirmationHeading).toBeVisible({ timeout: 60_000 });
     await expect(confirmationHeading).toHaveText("Confirmation");
+
+    if (expectedConfirmationMessage) {
+      await expect(
+        this.page.getByText(expectedConfirmationMessage, { exact: true }),
+      ).toBeVisible({ timeout: 60_000 });
+    }
 
     const okButton = this.page.locator(
       'button[id$="userResponsePopupDialogButtonOk"]',
