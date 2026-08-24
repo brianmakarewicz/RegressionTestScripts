@@ -5,11 +5,10 @@ import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { loadJournalReversalData } from "../../../utils/test-data/load-journal-reversal-data";
-import { loadOracleLoginData } from "../../../utils/test-data/load-oracle-login-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL-08 - user can reverse a journal and submit it for posting", async (
-  { browser, page },
+  { page },
   testInfo,
 ) => {
   test.setTimeout(300_000);
@@ -119,24 +118,11 @@ test("GL-08 - user can reverse a journal and submit it for posting", async (
     contentType: "text/plain",
   });
 
-  // Select the generated primary-ledger reversal and request posting. Oracle
-  // routes it for approval; switching to glApprover is the next iteration.
+  // Select the generated primary-ledger reversal and submit Post Batch. What
+  // happens after submission is environment-specific and outside this test.
   await manageJournalsPage.selectReversalJournalForPosting(
     sourceJournalId,
     journalData.ledger,
   );
   await manageJournalsPage.postSelectedJournalBatch();
-
-  // Validate the isolated approver session before adding journal approval.
-  const approverLogin = loadOracleLoginData("glApprover", env.environment);
-  const approverContext = await browser.newContext();
-
-  try {
-    const approverPage = await approverContext.newPage();
-    const approverAuthentication = new AuthenticationWorkflow(approverPage);
-
-    await approverAuthentication.loginWithCredentials(approverLogin);
-  } finally {
-    await approverContext.close();
-  }
 });

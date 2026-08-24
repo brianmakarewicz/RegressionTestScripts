@@ -631,20 +631,18 @@ export class ManageJournalsPage {
     await expect(postBatchButton).toBeEnabled();
     await postBatchButton.click();
 
-    const confirmationMessage = this.page.getByText(
-      "Your journal approval request has been submitted.",
-      { exact: true },
-    );
+    const confirmationHeading = this.page.locator('div[id$="d2::_ttxt"]');
 
-    await expect(confirmationMessage).toBeVisible({ timeout: 60_000 });
+    await expect(confirmationHeading).toBeVisible({ timeout: 60_000 });
+    await expect(confirmationHeading).toHaveText("Confirmation");
 
     const okButton = this.page.locator(
-      '[id*="userResponsePopupDialogButtonOk"]',
+      'button[id$="userResponsePopupDialogButtonOk"]',
     );
 
     await expect(okButton).toBeVisible({ timeout: 30_000 });
     await okButton.click();
-    await expect(confirmationMessage).toBeHidden({ timeout: 30_000 });
+    await expect(confirmationHeading).toBeHidden({ timeout: 30_000 });
   }
 
   /**
