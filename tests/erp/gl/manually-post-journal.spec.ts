@@ -1,20 +1,28 @@
+import path from "node:path";
 import { test } from "@playwright/test";
+import { env } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
+import { loadManuallyPostJournalData } from "../../../utils/test-data/load-manually-post-journal-data";
 
 test("GL 4.4.4 - authorized user can manually post a journal", async ({
   page,
 }) => {
   test.setTimeout(180_000);
 
-  // Require the exact saved batch prepared for this manual-posting run.
-  const journalBatchName = process.env.GL_JOURNAL_BATCH_NAME;
-
-  if (!journalBatchName) {
-    throw new Error("GL_JOURNAL_BATCH_NAME is required");
-  }
+  const testDataClientAlias = "demo";
+  const journalDataFilePath = path.join(
+    "test-data",
+    "clients",
+    testDataClientAlias,
+    env.environment,
+    "gl",
+    "manually-post-journal.json",
+  );
+  const { journalBatchName } =
+    loadManuallyPostJournalData(journalDataFilePath);
 
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);
