@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
@@ -15,7 +15,7 @@ test("GL 4.4.4 - authorized user can manually post a journal", async ({
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    env.clientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "manually-post-journal.json",

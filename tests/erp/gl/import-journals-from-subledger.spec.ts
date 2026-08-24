@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processes.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
@@ -18,7 +18,7 @@ test("GL 4.1.3 - user can submit Import Journals", async (
   const dataFilePath = path.join(
     "test-data",
     "clients",
-    env.clientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "import-journals.json",

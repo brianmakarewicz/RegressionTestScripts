@@ -1,17 +1,30 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { env } from "../../config/environment";
+import { env, requireTestDataAlias } from "../../config/environment";
 
-test("separates the test-data client from the authentication profile", () => {
-  const selectedAuthenticationAlias =
-    process.env.AUTHENTICATION_ALIAS?.trim().toLowerCase() || env.clientAlias;
+test("separates the test-data alias from the client credential alias", () => {
+  const selectedClientAlias = process.env.CLIENT_ALIAS?.trim().toLowerCase();
+  const selectedTestDataAlias = process.env.TEST_DATA_ALIAS
+    ?.trim()
+    .toLowerCase();
   const expectedEnvironmentFile = path.resolve(
     process.cwd(),
     "environments",
-    `.env.${selectedAuthenticationAlias}.${env.environment}`,
+    `.env.${selectedClientAlias}.${env.environment}`,
   );
 
-  expect(env.clientAlias).toBe(process.env.CLIENT_ALIAS?.toLowerCase());
-  expect(env.authenticationAlias).toBe(selectedAuthenticationAlias);
+  expect(env.testDataAlias).toBe(selectedTestDataAlias);
+  expect(env.clientAlias).toBe(selectedClientAlias);
   expect(env.envFilePath).toBe(expectedEnvironmentFile);
+});
+
+test("requires a test-data alias only when client JSON is requested", () => {
+  if (env.testDataAlias) {
+    expect(requireTestDataAlias()).toBe(env.testDataAlias);
+    return;
+  }
+
+  expect(() => requireTestDataAlias()).toThrow(
+    "TEST_DATA_ALIAS is required for tests that load client JSON data",
+  );
 });

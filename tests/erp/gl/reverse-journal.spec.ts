@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
@@ -16,7 +16,7 @@ test("GL-08 - user can reverse a journal and submit it for posting", async (
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    env.clientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "journal-reversal.json",

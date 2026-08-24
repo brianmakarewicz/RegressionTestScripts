@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processes.page";
 import { AutoPostJournalsPage } from "../../../pages/erp/gl/auto-post-journals.page";
@@ -18,7 +18,7 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
   const autoPostDataFilePath = path.join(
     "test-data",
     "clients",
-    env.clientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "run-autopost-journals.json",
