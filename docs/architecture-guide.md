@@ -243,7 +243,22 @@ Do not change `CLIENT_ALIAS` merely to select another user. Doing so would also 
 
 # Environment Variables
 
-Each local environment file contains only Oracle authentication/bootstrap values:
+The framework supports the following environment variables:
+
+| Variable | Set in | Purpose |
+| --- | --- | --- |
+| `CLIENT_ALIAS` | Terminal | Selects `test-data/clients/<client-alias>/<environment>/`. |
+| `ENVIRONMENT` | Terminal | Selects the environment used by both test data and credentials. |
+| `AUTHENTICATION_ALIAS` | Terminal (optional) | Selects the credential file. Defaults to `CLIENT_ALIAS` when omitted. |
+| `ORACLE_BASE_URL` | Credential file | Provides the Oracle Fusion URL. |
+| `ORACLE_USERNAME` | Credential file | Provides the login username. |
+| `ORACLE_PASSWORD` | Credential file | Provides the login password. |
+
+Setting `AUTHENTICATION_ALIAS` makes Playwright load the URL, username, and password from a different local credential file. For example, with `CLIENT_ALIAS=c001`, `ENVIRONMENT=dev`, and `AUTHENTICATION_ALIAS=c001Approver`, the framework reads functional JSON from `test-data/clients/c001/dev/` and credentials from `environments/.env.c001approver.dev`.
+
+The tracked `environments/.env.example` lists all supported variable names. Its terminal selectors are commented examples because they are not stored in credential files. Copy the credential portion when creating a local profile.
+
+Each local credential file contains only Oracle authentication/bootstrap values:
 
 ```env
 ORACLE_BASE_URL=https://example.oraclecloud.com
@@ -251,7 +266,7 @@ ORACLE_USERNAME=myusername
 ORACLE_PASSWORD=mypassword
 ```
 
-Set `CLIENT_ALIAS`, `ENVIRONMENT`, and optional `AUTHENTICATION_ALIAS` in the terminal before running Playwright. These selectors cannot be supplied by the selected `.env` file because the framework needs them first to determine which file to load.
+Set `CLIENT_ALIAS`, `ENVIRONMENT`, and optional `AUTHENTICATION_ALIAS` in the terminal before running Playwright. These selectors cannot be supplied by the selected credential file because the framework needs them first to determine which file to load.
 
 Functional test values such as ledgers, accounting periods, journal names, batch names, and safety flags do not belong in `.env` files. Store those values in the applicable client/environment/module JSON file under:
 
