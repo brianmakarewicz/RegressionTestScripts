@@ -178,8 +178,9 @@ This file is responsible for:
 
 1. Reading the selected client alias.
 2. Reading the selected environment.
-3. Building the correct environment file name.
-4. Loading the environment variables using dotenv.
+3. Reading an optional authentication alias.
+4. Building the correct authentication environment file name.
+5. Loading the environment variables using dotenv.
 
 Example:
 
@@ -189,7 +190,7 @@ $env:ENVIRONMENT="dev"
 npm test
 ```
 
-The framework automatically loads:
+By default, the framework automatically loads:
 
 ```text
 environments/.env.c001.dev
@@ -197,11 +198,52 @@ environments/.env.c001.dev
 
 No code changes are required when switching between clients or environments.
 
+## Test-data client and authentication profile
+
+`CLIENT_ALIAS` and `AUTHENTICATION_ALIAS` have separate responsibilities:
+
+- `CLIENT_ALIAS` selects the client folder containing functional JSON test data.
+- `AUTHENTICATION_ALIAS` optionally selects a different local credential profile.
+- If `AUTHENTICATION_ALIAS` is omitted, it defaults to `CLIENT_ALIAS`.
+
+This separation supports workflows in which multiple users act on the same client data. For example, an initiating user and an approver can share JSON under one client folder while loading different credentials.
+
+```powershell
+$env:CLIENT_ALIAS="c001"
+$env:ENVIRONMENT="dev"
+$env:AUTHENTICATION_ALIAS="c001Approver"
+npx playwright test tests/erp/gl/approve-journal.spec.ts --project=chromium --headed
+```
+
+That command loads functional data from:
+
+```text
+test-data/clients/c001/dev/
+```
+
+and credentials from:
+
+```text
+environments/.env.c001approver.dev
+```
+
+To return to the default client credentials in the same PowerShell session, either set the authentication alias to the client alias or remove the override:
+
+```powershell
+$env:AUTHENTICATION_ALIAS="c001"
+```
+
+```powershell
+Remove-Item Env:AUTHENTICATION_ALIAS -ErrorAction SilentlyContinue
+```
+
+Do not change `CLIENT_ALIAS` merely to select another user. Doing so would also select a different functional test-data folder.
+
 ---
 
 # Environment Variables
 
-Each local environment file contains:
+Each local environment file contains only environment selection metadata and authentication/bootstrap values:
 
 ```env
 CLIENT_ALIAS=c001
@@ -211,6 +253,14 @@ ORACLE_BASE_URL=https://example.oraclecloud.com
 ORACLE_USERNAME=myusername
 ORACLE_PASSWORD=mypassword
 ```
+
+Functional test values such as ledgers, accounting periods, journal names, batch names, and safety flags do not belong in `.env` files. Store those values in the applicable client/environment/module JSON file under:
+
+```text
+test-data/clients/<client-alias>/<environment>/<module>/
+```
+
+Environment files are authentication profiles. Functional JSON files are test-data profiles. Keep these concerns separate even when their aliases happen to match.
 
 The variables intentionally use the prefix **ORACLE_** to avoid conflicts with Windows environment variables such as:
 

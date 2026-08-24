@@ -17,11 +17,16 @@ if (!environment) {
   throw new Error('ENVIRONMENT is required. Example: dev');
 }
 
-// Resolve the selected file using environments/.env.<client>.<environment>.
+// Authentication normally follows the client alias. A separate profile can
+// be selected when another authorized user must act on the same client data.
+const authenticationAlias =
+  process.env.AUTHENTICATION_ALIAS?.trim().toLowerCase() || clientAlias;
+
+// Resolve credentials using the authentication profile and environment.
 const envFilePath = path.resolve(
   process.cwd(),
   'environments',
-  `.env.${clientAlias}.${environment}`
+  `.env.${authenticationAlias}.${environment}`
 );
 
 // Load Oracle connection values while preserving values already set by the process.
@@ -30,6 +35,7 @@ dotenv.config({ path: envFilePath });
 // Expose the selected environment metadata and Oracle connection settings.
 export const env = {
   clientAlias,
+  authenticationAlias,
   environment,
   baseUrl: process.env.ORACLE_BASE_URL,
   username: process.env.ORACLE_USERNAME,

@@ -12,11 +12,10 @@ test("GL 4.4.4 - authorized user can manually post a journal", async ({
 }) => {
   test.setTimeout(180_000);
 
-  const testDataClientAlias = "demo";
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    testDataClientAlias,
+    env.clientAlias,
     env.environment,
     "gl",
     "manually-post-journal.json",

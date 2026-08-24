@@ -11,11 +11,10 @@ import { loadWithdrawDeleteJournalsData } from "../../../utils/erp/gl/load-withd
 test("user can withdraw and delete a journal batch", async ({ page }) => {
   test.setTimeout(180_000);
 
-  const testDataClientAlias = "demo";
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    testDataClientAlias,
+    env.clientAlias,
     env.environment,
     "gl",
     "withdraw-delete-journals.json",

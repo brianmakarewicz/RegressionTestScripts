@@ -14,11 +14,10 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async (
 ) => {
   test.setTimeout(420_000);
 
-  const testDataClientAlias = "demo";
   const autoReverseDataFilePath = path.join(
     "test-data",
     "clients",
-    testDataClientAlias,
+    env.clientAlias,
     env.environment,
     "gl",
     "run-autoreverse-journal.json",

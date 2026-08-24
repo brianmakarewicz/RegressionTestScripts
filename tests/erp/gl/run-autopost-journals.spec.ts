@@ -15,11 +15,10 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
 ) => {
   test.setTimeout(420_000);
 
-  const testDataClientAlias = "demo";
   const autoPostDataFilePath = path.join(
     "test-data",
     "clients",
-    testDataClientAlias,
+    env.clientAlias,
     env.environment,
     "gl",
     "run-autopost-journals.json",

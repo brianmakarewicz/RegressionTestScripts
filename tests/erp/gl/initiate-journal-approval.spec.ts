@@ -10,11 +10,10 @@ import { loadJournalApprovalData } from "../../../utils/erp/gl/load-journal-appr
 test("user can initiate journal approval with posting", async ({ page }) => {
   test.setTimeout(180_000);
 
-  const testDataClientAlias = "demo";
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    testDataClientAlias,
+    env.clientAlias,
     env.environment,
     "gl",
     "journal-approval.json",

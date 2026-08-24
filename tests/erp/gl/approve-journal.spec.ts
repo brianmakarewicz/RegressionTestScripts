@@ -10,13 +10,10 @@ import { AuthenticationWorkflow } from "../../../workflows/authentication.workfl
 test("GL 4.4.2 - authorized user can approve a journal", async ({ page }) => {
   test.setTimeout(180_000);
 
-  // glApprover is an authentication profile for the Demo client. Functional
-  // approval data remains in Demo's module-specific JSON directory.
-  const testDataClientAlias = "demo";
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    testDataClientAlias,
+    env.clientAlias,
     env.environment,
     "gl",
     "journal-approval.json",
