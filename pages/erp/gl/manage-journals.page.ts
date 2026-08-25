@@ -9,6 +9,59 @@ import { expect, type Page } from "@playwright/test";
 export class ManageJournalsPage {
   constructor(private page: Page) {}
 
+  /**
+   * Changes the active Data Access Set from the Manage Journals header.
+   * The selection is skipped when the requested value is already active.
+   */
+  async selectDataAccessSet(dataAccessSet: string): Promise<void> {
+    // Oracle renders the label, selected value, and Change link as separate
+    // descendants, so validate the selected value itself instead of treating
+    // the visually combined header as one text node.
+    const activeDataAccessSet = this.page.getByText(dataAccessSet, {
+      exact: true,
+    }).first();
+
+    if (await activeDataAccessSet.isVisible()) {
+      return;
+    }
+
+    const changeLink = this.page.getByRole("link", {
+      name: "Change",
+      exact: true,
+    });
+
+    await expect(changeLink).toBeVisible({ timeout: 30_000 });
+    await changeLink.click();
+
+    const dataAccessSetCombobox = this.page.getByRole("combobox", {
+      name: "Data Access Set",
+      exact: true,
+    });
+
+    await expect(dataAccessSetCombobox).toBeVisible({ timeout: 30_000 });
+    await dataAccessSetCombobox.selectOption({ label: dataAccessSet });
+    await expect(dataAccessSetCombobox.locator("option:checked")).toHaveText(
+      dataAccessSet,
+    );
+
+    const okButton = this.page.getByRole("button", {
+      name: "OK",
+      exact: true,
+    });
+
+    await expect(okButton).toBeEnabled();
+    await okButton.click();
+
+    await expect(
+      this.page.getByRole("heading", {
+        name: "Manage Journals",
+        exact: true,
+        level: 1,
+      }),
+    ).toBeVisible({ timeout: 60_000 });
+    await expect(activeDataAccessSet).toBeVisible({ timeout: 60_000 });
+  }
+
   private journalBatchResultLinksByNameOrPrefix(
     journalNameOrPrefix: string,
   ) {

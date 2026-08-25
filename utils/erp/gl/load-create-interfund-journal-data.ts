@@ -164,6 +164,11 @@ export function loadCreateInterfundJournalData(
       errors,
     ),
     ledger: readRequiredString(parsedData.ledger, "ledger", errors),
+    approverDataAccessSet: readRequiredString(
+      parsedData.approverDataAccessSet,
+      "approverDataAccessSet",
+      errors,
+    ),
     category: readRequiredString(parsedData.category, "category", errors),
     lines,
   };

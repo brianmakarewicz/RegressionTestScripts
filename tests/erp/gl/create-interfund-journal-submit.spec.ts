@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
+import { loadAuthenticationProfile } from "../../../config/authentication-profile";
 import { env, requireTestDataAlias } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { CreateJournalPage } from "../../../pages/erp/gl/create-journal.page";
@@ -9,6 +10,7 @@ import { loadCreateInterfundJournalData } from "../../../utils/erp/gl/load-creat
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.3.1 - user can create and submit an interfund journal", async ({
+  browser,
   page,
 }, testInfo) => {
   test.setTimeout(360_000);
@@ -132,4 +134,35 @@ test("GL 4.3.1 - user can create and submit an interfund journal", async ({
     approverAssigned,
     `Journal ${journalBatchName} was not assigned to an approver after ${maximumAssignmentChecks} checks`,
   ).toBe(true);
+
+  // Use a fresh browser context so the approver has isolated cookies and
+  // session storage while the creator's authenticated session remains intact.
+  const approverAuthentication = loadAuthenticationProfile(
+    "rina",
+    env.environment,
+  );
+  const approverContext = await browser.newContext();
+
+  try {
+    const approverPage = await approverContext.newPage();
+    const approverLogin = new AuthenticationWorkflow(
+      approverPage,
+      approverAuthentication,
+    );
+    const approverNavigator = new FusionNavigatorPage(approverPage);
+    const approverManageJournals = new ManageJournalsPage(approverPage);
+    const approverEditJournal = new EditJournalPage(approverPage);
+
+    await approverLogin.login();
+    await approverNavigator.goToManageJournalsPage();
+    await approverManageJournals.selectDataAccessSet(
+      journalData.approverDataAccessSet,
+    );
+    await approverManageJournals.searchForJournalBatch(journalBatchName);
+    await approverManageJournals.openJournalBatch(journalBatchName);
+    await approverEditJournal.waitForEditJournalPage();
+    await approverEditJournal.verifyJournalBatchName(journalBatchName);
+  } finally {
+    await approverContext.close();
+  }
 });

@@ -4,6 +4,7 @@
   "accountingPeriod": "Apr-26",
   "attachmentFilePath": "test-data/attachments/TestFile.example.txt",
   "ledger": "Example Fund Ledger",
+  "approverDataAccessSet": "Example Fund Ledger",
   "category": "Adjustment",
   "lines": [
     {

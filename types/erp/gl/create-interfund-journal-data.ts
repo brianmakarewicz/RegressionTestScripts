@@ -16,6 +16,7 @@ export interface CreateInterfundJournalData {
   accountingPeriod: string;
   attachmentFilePath: string;
   ledger: string;
+  approverDataAccessSet: string;
   category: string;
   lines: InterfundJournalLineData[];
 }
