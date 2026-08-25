@@ -446,6 +446,24 @@ export class EditJournalPage {
     ).toBeVisible({ timeout: 30_000 });
   }
 
+  async hasActionLogAction(expectedAction: string): Promise<boolean> {
+    const actionLogTable = this.page.getByRole("table", {
+      name: "Action Log",
+    });
+    const escapedAction = expectedAction.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
+    const matchingAction = actionLogTable
+      .locator(
+        'tr[_afrrk] table[summary=""] > tbody > tr > td:nth-child(2)',
+      )
+      .filter({ hasText: new RegExp(`^${escapedAction}$`) })
+      .first();
+
+    return matchingAction.isVisible();
+  }
+
   private async verifyApprovalStatusIsRequired(): Promise<void> {
     const approvalStatusLabel = this.page.getByText("Approval Status", {
       exact: true,

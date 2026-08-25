@@ -1,0 +1,22 @@
+{
+  "batchNamePrefix": "GL431_INTERFUND",
+  "balanceType": "Actual",
+  "accountingPeriod": "Apr-26",
+  "attachmentFilePath": "test-data/attachments/TestFile.example.txt",
+  "ledger": "Example Fund Ledger",
+  "category": "Adjustment",
+  "lines": [
+    {
+      "account": "1000.0100.000000.452010.000000.0000.00000.0000",
+      "fund": "1000",
+      "debit": "1,000.00",
+      "description": "GL 4.3.1 interfund debit"
+    },
+    {
+      "account": "2503.6403.000000.452020.000000.0000.00000.0000",
+      "fund": "2503",
+      "credit": "1,000.00",
+      "description": "GL 4.3.1 interfund credit"
+    }
+  ]
+}
