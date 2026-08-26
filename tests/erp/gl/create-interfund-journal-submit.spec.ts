@@ -162,6 +162,25 @@ test("GL 4.3.1 - user can create and submit an interfund journal", async ({
     await approverManageJournals.openJournalBatch(journalBatchName);
     await approverEditJournal.waitForEditJournalPage();
     await approverEditJournal.verifyJournalBatchName(journalBatchName);
+    await approverEditJournal.approveJournalBatch();
+
+    // Approval returns before Oracle finishes posting. Return to the search
+    // page and poll the exact batch-and-ledger row for both final states.
+    await approverEditJournal.returnToManageJournals();
+    await approverManageJournals.waitForJournalBatchToBeApprovedAndPosted(
+      journalBatchName,
+      journalData.ledger,
+    );
+
+    // Reopen the exact batch and confirm the final statuses on the journal.
+    await approverManageJournals.openJournalBatch(journalBatchName);
+    await approverEditJournal.waitForEditJournalPage();
+    await approverEditJournal.verifyJournalBatchName(journalBatchName);
+    await approverEditJournal.verifyApprovalStatus("Approved");
+    await approverEditJournal.verifyBatchStatus("Posted");
+    await approverEditJournal.verifyLedgerIntercompanyBalancingLines(
+      journalData.lines.length,
+    );
   } finally {
     await approverContext.close();
   }

@@ -102,6 +102,43 @@ export class EditJournalPage {
     ).toBeVisible();
   }
 
+  async verifyApprovalStatus(expectedApprovalStatus: string): Promise<void> {
+    await this.verifyReadOnlyStatusRow(
+      "ap1:plam3",
+      "Approval Status",
+      expectedApprovalStatus,
+    );
+  }
+
+  /**
+   * Confirms posting generated the expected ledger intercompany balancing
+   * lines in addition to the original journal lines.
+   */
+  async verifyLedgerIntercompanyBalancingLines(
+    originalLineCount: number,
+    expectedBalancingLineCount = 2,
+  ): Promise<void> {
+    const journalLinesTable = this.page.getByRole("table", {
+      name: "Journal Lines",
+      exact: true,
+    });
+
+    await expect(journalLinesTable).toBeVisible({ timeout: 30_000 });
+
+    const journalLineRows = journalLinesTable.locator('tr[_afrrk]');
+    await expect(journalLineRows).toHaveCount(
+      originalLineCount + expectedBalancingLineCount,
+    );
+
+    const balancingLineDescriptions = journalLineRows
+      .locator('span[id$="it4::content"]')
+      .filter({ hasText: /^Ledger intercompany balancing line\.$/ });
+
+    await expect(balancingLineDescriptions).toHaveCount(
+      expectedBalancingLineCount,
+    );
+  }
+
   /**
    * Confirms the imported journal is complete and eligible for posting in an
    * environment where approval is not required.

@@ -891,6 +891,49 @@ export class ManageJournalsPage {
       .toBe(true);
   }
 
+  /**
+   * Waits until the exact batch-and-ledger result row shows the completed
+   * approval and its requested posting. Both values must be present in the
+   * same row so unrelated search results cannot satisfy the validation.
+   */
+  async waitForJournalBatchToBeApprovedAndPosted(
+    journalBatchName: string,
+    ledgerName: string,
+  ): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          await this.submitJournalBatchSearch(journalBatchName);
+
+          const matchingRow = this.journalRowForLedger(
+            journalBatchName,
+            ledgerName,
+          );
+
+          if ((await matchingRow.count()) !== 1) {
+            return false;
+          }
+
+          const isApproved = await matchingRow
+            .getByText("Approved", { exact: true })
+            .isVisible();
+          const isPosted = await matchingRow
+            .getByText("Posted", { exact: true })
+            .isVisible();
+
+          return isApproved && isPosted;
+        },
+        {
+          message:
+            `Expected ${journalBatchName} in ${ledgerName} to reach ` +
+            "Approval Status Approved and Batch Status Posted",
+          timeout: 120_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(true);
+  }
+
   // Journal batch deletion verification
   async verifyJournalBatchWasDeleted(journalBatchName: string): Promise<void> {
     await this.submitJournalBatchSearch(journalBatchName);
