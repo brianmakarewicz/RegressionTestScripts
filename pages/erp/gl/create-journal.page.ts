@@ -29,6 +29,65 @@ export class CreateJournalPage {
       .fill(description);
   }
 
+  async enterJournalName(journalName: string): Promise<void> {
+    const journalNameTextbox = this.page.locator(
+      'input[name*="showLessJournalName"]',
+    );
+
+    await expect(journalNameTextbox).toBeVisible({ timeout: 30_000 });
+    await journalNameTextbox.fill(journalName);
+    await expect(journalNameTextbox).toHaveValue(journalName);
+    await journalNameTextbox.press("Tab");
+  }
+
+  async enterJournalDescription(description: string): Promise<void> {
+    const journalDescriptionTextbox = this.page.locator(
+      'textarea[name*="showLessJournalDescription"]',
+    );
+
+    await expect(journalDescriptionTextbox).toBeVisible({ timeout: 30_000 });
+    await journalDescriptionTextbox.fill(description);
+    await expect(journalDescriptionTextbox).toHaveValue(description);
+    await journalDescriptionTextbox.press("Tab");
+  }
+
+  async showJournalDetails(): Promise<void> {
+    const showMoreLink = this.page.locator('a[id$="showMoreHeader"]');
+
+    await expect(showMoreLink).toBeVisible({ timeout: 30_000 });
+    await showMoreLink.click();
+  }
+
+  async chooseJournalAttachmentFile(filePath: string): Promise<void> {
+    const manageAttachmentsLink = this.page.locator(
+      'a[id$="a3:clLAdds"][title="Manage Attachments"]',
+    );
+
+    await expect(manageAttachmentsLink).toBeVisible({ timeout: 30_000 });
+    await manageAttachmentsLink.click();
+
+    const attachmentInput = this.page.locator(
+      'input[type="file"][name*="a3:"][name*="ifPopup"]',
+    );
+
+    await expect(attachmentInput).toBeVisible({ timeout: 30_000 });
+    await attachmentInput.setInputFiles(filePath);
+
+    const attachmentTitleTextbox = this.page.locator(
+      'input[name*="a3:"][name*="popTitleInputText"]',
+    );
+
+    await expect(attachmentTitleTextbox).not.toHaveValue("", {
+      timeout: 30_000,
+    });
+
+    const okButton = this.page.locator('button[id$="a3:dc_cb1"]');
+
+    await expect(okButton).toBeVisible({ timeout: 30_000 });
+    await okButton.click();
+    await expect(okButton).toBeHidden({ timeout: 30_000 });
+  }
+
   async selectBalanceType(
     balanceType: "Actual" | "Encumbrance",
   ): Promise<void> {
@@ -131,6 +190,31 @@ export class CreateJournalPage {
     await expect(categoryTextbox).toHaveValue(category);
   }
 
+  async commitCategory(category: string): Promise<void> {
+    // This is the Journal Category control shown before Journal Show More.
+    // Show More replaces it with a separate sis4 control.
+    const categoryTextbox = this.page.locator(
+      'input[id$="sis3:userJeCategoryNameInputSearch1::content"]',
+    );
+
+    await expect(categoryTextbox).toBeVisible({ timeout: 30_000 });
+    await expect(categoryTextbox).toHaveValue(category);
+    // Commit the ADF list-of-values selection before a Show More or attachment
+    // partial-page refresh can restore the previous empty server-side value.
+    await categoryTextbox.press("Tab");
+    // The ADF model update is asynchronous and is substantially faster than a
+    // human interaction in headless mode. Let that update finish before the
+    // next partial-page refresh replaces this control.
+    await this.page.waitForTimeout(2_000);
+    await expect(categoryTextbox).toHaveValue(category);
+  }
+
+  async verifyCategory(category: string): Promise<void> {
+    await expect(
+      this.page.getByRole("textbox", { name: "Category" }),
+    ).toHaveValue(category, { timeout: 30_000 });
+  }
+
   // Journal line entry
   async enterJournalLineAccount(
     lineNumber: number,
@@ -223,7 +307,6 @@ export class CreateJournalPage {
     // Commit the final grid edit before a page-level action such as Save.
     // Oracle ADF can otherwise consume the next key while closing the editor.
     await descriptionTextbox.press("Tab");
-    await expect(descriptionTextbox).toHaveValue(description);
   }
 
   // Journal processing actions
@@ -271,6 +354,24 @@ export class CreateJournalPage {
     ).toBeVisible({ timeout: 60_000 });
 
     await this.page.locator('[id*="userResponsePopupDialogButtonOk"]').click();
+  }
+
+  async returnToJournalsWorkspace(): Promise<void> {
+    const cancelButton = this.page.getByRole("button", {
+      name: "Cancel",
+      exact: true,
+    });
+
+    await expect(cancelButton).toBeVisible({ timeout: 30_000 });
+    await cancelButton.click();
+
+    await expect(
+      this.page.getByRole("heading", {
+        name: "Journals",
+        exact: true,
+        level: 1,
+      }),
+    ).toBeVisible({ timeout: 60_000 });
   }
 
   // Journal approval history

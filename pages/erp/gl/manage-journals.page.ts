@@ -9,6 +9,59 @@ import { expect, type Page } from "@playwright/test";
 export class ManageJournalsPage {
   constructor(private page: Page) {}
 
+  /**
+   * Changes the active Data Access Set from the Manage Journals header.
+   * The selection is skipped when the requested value is already active.
+   */
+  async selectDataAccessSet(dataAccessSet: string): Promise<void> {
+    // Oracle renders the label, selected value, and Change link as separate
+    // descendants, so validate the selected value itself instead of treating
+    // the visually combined header as one text node.
+    const activeDataAccessSet = this.page.getByText(dataAccessSet, {
+      exact: true,
+    }).first();
+
+    if (await activeDataAccessSet.isVisible()) {
+      return;
+    }
+
+    const changeLink = this.page.getByRole("link", {
+      name: "Change",
+      exact: true,
+    });
+
+    await expect(changeLink).toBeVisible({ timeout: 30_000 });
+    await changeLink.click();
+
+    const dataAccessSetCombobox = this.page.getByRole("combobox", {
+      name: "Data Access Set",
+      exact: true,
+    });
+
+    await expect(dataAccessSetCombobox).toBeVisible({ timeout: 30_000 });
+    await dataAccessSetCombobox.selectOption({ label: dataAccessSet });
+    await expect(dataAccessSetCombobox.locator("option:checked")).toHaveText(
+      dataAccessSet,
+    );
+
+    const okButton = this.page.getByRole("button", {
+      name: "OK",
+      exact: true,
+    });
+
+    await expect(okButton).toBeEnabled();
+    await okButton.click();
+
+    await expect(
+      this.page.getByRole("heading", {
+        name: "Manage Journals",
+        exact: true,
+        level: 1,
+      }),
+    ).toBeVisible({ timeout: 60_000 });
+    await expect(activeDataAccessSet).toBeVisible({ timeout: 60_000 });
+  }
+
   private journalBatchResultLinksByNameOrPrefix(
     journalNameOrPrefix: string,
   ) {
@@ -831,6 +884,49 @@ export class ManageJournalsPage {
           message: `Expected every ${journalBatchName} search result to be posted`,
           // Posting time varies by environment; poll at bounded intervals
           // instead of introducing a fixed wait into every execution.
+          timeout: 120_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(true);
+  }
+
+  /**
+   * Waits until the exact batch-and-ledger result row shows the completed
+   * approval and its requested posting. Both values must be present in the
+   * same row so unrelated search results cannot satisfy the validation.
+   */
+  async waitForJournalBatchToBeApprovedAndPosted(
+    journalBatchName: string,
+    ledgerName: string,
+  ): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          await this.submitJournalBatchSearch(journalBatchName);
+
+          const matchingRow = this.journalRowForLedger(
+            journalBatchName,
+            ledgerName,
+          );
+
+          if ((await matchingRow.count()) !== 1) {
+            return false;
+          }
+
+          const isApproved = await matchingRow
+            .getByText("Approved", { exact: true })
+            .isVisible();
+          const isPosted = await matchingRow
+            .getByText("Posted", { exact: true })
+            .isVisible();
+
+          return isApproved && isPosted;
+        },
+        {
+          message:
+            `Expected ${journalBatchName} in ${ledgerName} to reach ` +
+            "Approval Status Approved and Batch Status Posted",
           timeout: 120_000,
           intervals: [5_000, 10_000],
         },
