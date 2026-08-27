@@ -24,10 +24,11 @@
   "homepage": "https://github.com/brianmakarewicz/RegressionTestScripts#readme",
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "@types/node": "^25.9.3"
+    "@types/node": "^25.9.5",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
-    "csv-parse": "^7.0.1",
+    "csv-parse": "^7.0.2",
     "dotenv": "^17.4.2"
   }
 }

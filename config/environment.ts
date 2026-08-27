@@ -10,7 +10,7 @@ const environment = process.env.ENVIRONMENT?.toLowerCase();
 
 // Fail early when the test runner has not selected a client and environment.
 if (!clientAlias) {
-  throw new Error('CLIENT_ALIAS is required. Example: c001');
+  throw new Error("CLIENT_ALIAS is required. Example: c001");
 }
 
 if (!environment) {
