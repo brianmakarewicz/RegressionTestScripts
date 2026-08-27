@@ -1,0 +1,6 @@
+{
+  "sourceJournalBatchName": "EXAMPLE_REVERSIBLE_JOURNAL_BATCH",
+  "ledger": "Example Primary Ledger",
+  "reversalPeriod": "06-26",
+  "reversalMethod": "Switch DR or CR"
+}

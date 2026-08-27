@@ -4,20 +4,22 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// These selectors must exist before loading the environment-specific file.
-const clientAlias = process.env.CLIENT_ALIAS?.toLowerCase();
+// These selectors must exist before loading credentials or functional data.
+const testDataAlias = process.env.TEST_DATA_ALIAS?.trim().toLowerCase();
+const clientAlias = process.env.CLIENT_ALIAS?.trim().toLowerCase();
 const environment = process.env.ENVIRONMENT?.toLowerCase();
-
-// Fail early when the test runner has not selected a client and environment.
-if (!clientAlias) {
-  throw new Error("CLIENT_ALIAS is required. Example: c001");
-}
 
 if (!environment) {
   throw new Error('ENVIRONMENT is required. Example: dev');
 }
 
-// Resolve the selected file using environments/.env.<client>.<environment>.
+if (!clientAlias) {
+  throw new Error(
+    'CLIENT_ALIAS is required for Oracle authentication. Example: c001',
+  );
+}
+
+// Resolve credentials using the authentication profile and environment.
 const envFilePath = path.resolve(
   process.cwd(),
   'environments',
@@ -29,12 +31,22 @@ dotenv.config({ path: envFilePath });
 
 // Expose the selected environment metadata and Oracle connection settings.
 export const env = {
+  testDataAlias,
   clientAlias,
   environment,
   baseUrl: process.env.ORACLE_BASE_URL,
   username: process.env.ORACLE_USERNAME,
   password: process.env.ORACLE_PASSWORD,
-  glDataAccessSet: process.env.ORACLE_GL_DATA_ACCESS_SET,
-  glLedger: process.env.ORACLE_GL_LEDGER,
   envFilePath,
 };
+
+/** Returns the selected functional test-data alias or fails with guidance. */
+export function requireTestDataAlias(): string {
+  if (!testDataAlias) {
+    throw new Error(
+      'TEST_DATA_ALIAS is required for tests that load client JSON data. Example: c001',
+    );
+  }
+
+  return testDataAlias;
+}

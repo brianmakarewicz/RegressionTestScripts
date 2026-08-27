@@ -1,12 +1,12 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processes.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ImportJournalsPage } from "../../../pages/erp/gl/import-journals.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
-import { loadImportJournalsData } from "../../../utils/test-data/load-import-journals-data";
+import { loadImportJournalsData } from "../../../utils/erp/gl/load-import-journals-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.1.3 - user can submit Import Journals", async (
@@ -18,7 +18,7 @@ test("GL 4.1.3 - user can submit Import Journals", async (
   const dataFilePath = path.join(
     "test-data",
     "clients",
-    env.clientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "import-journals.json",

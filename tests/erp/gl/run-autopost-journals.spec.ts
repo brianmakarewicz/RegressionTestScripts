@@ -1,10 +1,12 @@
+import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processes.page";
 import { AutoPostJournalsPage } from "../../../pages/erp/gl/auto-post-journals.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
+import { loadRunAutoPostJournalsData } from "../../../utils/erp/gl/load-run-autopost-journals-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.4.3 - authorized user can run AutoPost journals", async (
@@ -13,19 +15,19 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
 ) => {
   test.setTimeout(420_000);
 
-  // This value is the base journal name entered in the spreadsheet. Oracle
-  // appends the category to the Journal name and import details to the Batch.
-  const journalBaseName = process.env.GL_JOURNAL_BATCH_NAME;
-  const ledgerName = env.glLedger;
-  const criteriaSet = "All Journals US Primary Ledger";
-
-  if (!journalBaseName) {
-    throw new Error("GL_JOURNAL_BATCH_NAME is required");
-  }
-
-  if (!ledgerName) {
-    throw new Error("ORACLE_GL_LEDGER is required");
-  }
+  const autoPostDataFilePath = path.join(
+    "test-data",
+    "clients",
+    requireTestDataAlias(),
+    env.environment,
+    "gl",
+    "run-autopost-journals.json",
+  );
+  const {
+    journalBaseName,
+    ledger: ledgerName,
+    criteriaSet,
+  } = loadRunAutoPostJournalsData(autoPostDataFilePath);
 
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);

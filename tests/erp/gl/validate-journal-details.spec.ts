@@ -1,11 +1,11 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
-import { loadValidateJournalDetailsData } from "../../../utils/test-data/load-validate-journal-details-data";
+import { loadValidateJournalDetailsData } from "../../../utils/erp/gl/load-validate-journal-details-data";
 
 test("user can find a journal batch and validate its details", async ({
   page,
@@ -16,7 +16,7 @@ test("user can find a journal batch and validate its details", async ({
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    env.clientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "validate-journal-details.json",

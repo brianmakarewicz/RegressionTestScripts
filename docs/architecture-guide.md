@@ -85,11 +85,12 @@ environments/
 ├── .env.c001.prod
 ```
 
-When running tests, the desired client and environment are selected from the command line.
+When running tests, the credential profile, test-data profile when needed, and environment are selected from the command line.
 
 Example:
 
 ```powershell
+$env:TEST_DATA_ALIAS="c001"
 $env:CLIENT_ALIAS="c001"
 $env:ENVIRONMENT="dev"
 npm test
@@ -176,20 +177,22 @@ config/environment.ts
 
 This file is responsible for:
 
-1. Reading the selected client alias.
+1. Reading an optional test-data alias.
 2. Reading the selected environment.
-3. Building the correct environment file name.
-4. Loading the environment variables using dotenv.
+3. Reading the selected client credential alias.
+4. Building the correct authentication environment file name.
+5. Loading the environment variables using dotenv.
 
 Example:
 
 ```powershell
+$env:TEST_DATA_ALIAS="c001"
 $env:CLIENT_ALIAS="c001"
 $env:ENVIRONMENT="dev"
 npm test
 ```
 
-The framework automatically loads:
+With this selection, the framework loads:
 
 ```text
 environments/.env.c001.dev
@@ -197,20 +200,78 @@ environments/.env.c001.dev
 
 No code changes are required when switching between clients or environments.
 
+## Test-data client and authentication profile
+
+`TEST_DATA_ALIAS` and `CLIENT_ALIAS` have independent responsibilities:
+
+- `TEST_DATA_ALIAS` selects the client folder containing functional JSON test data. It is required only by tests that load client JSON.
+- `CLIENT_ALIAS` selects the local credential profile. It is required by tests that log into Oracle.
+
+This separation was needed because some tests authenticate without loading functional JSON, while some workflows use multiple users against the same client data. Previously, one client alias controlled both concerns. Selecting an approver therefore also pointed the test toward an approver-specific JSON folder, which encouraged duplicate client data. Independent aliases let each test require only what it uses and allow an initiating user and an approver to share one client JSON folder while loading different credentials.
+
+```powershell
+$env:TEST_DATA_ALIAS="c001"
+$env:ENVIRONMENT="dev"
+$env:CLIENT_ALIAS="c001Approver"
+npx playwright test tests/erp/gl/approve-journal.spec.ts --project=chromium --headed
+```
+
+That command loads functional data from:
+
+```text
+test-data/clients/c001/dev/
+```
+
+and credentials from:
+
+```text
+environments/.env.c001approver.dev
+```
+
+To use the client's standard credential profile, set `CLIENT_ALIAS` to that profile explicitly:
+
+```powershell
+$env:CLIENT_ALIAS="c001"
+```
+
+Do not change `TEST_DATA_ALIAS` merely to select another user. Doing so would also select a different functional test-data folder.
+
 ---
 
 # Environment Variables
 
-Each local environment file contains:
+The framework supports the following environment variables:
+
+| Variable | Set in | Purpose |
+| --- | --- | --- |
+| `TEST_DATA_ALIAS` | Terminal when needed | Selects `test-data/clients/<test-data-alias>/<environment>/`. Required only for tests that load client JSON. |
+| `ENVIRONMENT` | Terminal | Selects the environment used by both test data and credentials. |
+| `CLIENT_ALIAS` | Terminal when needed | Selects the credential file. Required for tests that log into Oracle. |
+| `ORACLE_BASE_URL` | Credential file | Provides the Oracle Fusion URL. |
+| `ORACLE_USERNAME` | Credential file | Provides the login username. |
+| `ORACLE_PASSWORD` | Credential file | Provides the login password. |
+
+Setting `CLIENT_ALIAS` makes Playwright load the URL, username, and password from a different local credential file. For example, with `TEST_DATA_ALIAS=c001`, `ENVIRONMENT=dev`, and `CLIENT_ALIAS=c001Approver`, the framework reads functional JSON from `test-data/clients/c001/dev/` and credentials from `environments/.env.c001approver.dev`.
+
+The tracked `environments/.env.example` lists all supported variable names. Its terminal selectors are commented examples because they are not stored in credential files. Copy the credential portion when creating a local profile.
+
+Each local credential file contains only Oracle authentication/bootstrap values:
 
 ```env
-CLIENT_ALIAS=c001
-ENVIRONMENT=dev
-
 ORACLE_BASE_URL=https://example.oraclecloud.com
 ORACLE_USERNAME=myusername
 ORACLE_PASSWORD=mypassword
 ```
+
+Set the selectors required by the test in the terminal before running Playwright. They cannot be supplied by the selected credential file because the framework needs them first to determine which file or test-data folder to use.
+
+Functional test values such as ledgers, accounting periods, journal names, batch names, and safety flags do not belong in `.env` files. Store those values in the applicable client/environment/module JSON file under:
+
+```text
+test-data/clients/<test-data-alias>/<environment>/<module>/
+```
+
+Environment files are authentication profiles. Functional JSON files are test-data profiles. Keep these concerns separate even when their aliases happen to match.
 
 The variables intentionally use the prefix **ORACLE_** to avoid conflicts with Windows environment variables such as:
 
@@ -307,10 +368,10 @@ This keeps the automation reusable across clients while allowing each client and
 
 # Create Journal Test Data
 
-Create Journal tests load input data from a JSON file selected by the active client alias and environment.
+Create Journal tests load input data from a JSON file selected by the active test-data alias and environment.
 
 ```text
-CLIENT_ALIAS + ENVIRONMENT
+TEST_DATA_ALIAS + ENVIRONMENT
             ↓
 Environment-specific JSON file
             ↓
@@ -326,7 +387,7 @@ Create Journal Page Object
 Runtime data follows this convention:
 
 ```text
-test-data/clients/<client-alias>/<environment>/gl/create-journal.json
+test-data/clients/<test-data-alias>/<environment>/gl/create-journal.json
 ```
 
 Sanitized examples are stored under:
@@ -352,7 +413,9 @@ Real environment-specific data remains excluded from source control.
 
 # Creating a New Client Environment
 
-To add a new client environment, create a new local file.
+To add a new client environment:
+
+1. Copy `environments/.env.example` to a local file named for the client alias and environment.
 
 Example:
 
@@ -363,15 +426,42 @@ environments/.env.c008.dev
 Contents:
 
 ```env
-CLIENT_ALIAS=c008
-ENVIRONMENT=dev
-
 ORACLE_BASE_URL=<client url>
 ORACLE_USERNAME=<username>
 ORACLE_PASSWORD=<password>
 ```
 
-No code changes are required.
+2. Create the client test-data directory and the module JSON files required by the tests:
+
+```text
+test-data/clients/c008/dev/<module>/
+```
+
+3. Select the client and environment when running the tests:
+
+```powershell
+$env:TEST_DATA_ALIAS="c008"
+$env:CLIENT_ALIAS="c008"
+$env:ENVIRONMENT="dev"
+npx playwright test
+```
+
+4. If a workflow needs another user, create another credential file without creating another client test-data folder:
+
+```text
+environments/.env.c008approver.dev
+```
+
+Run that step of the workflow with the same test-data alias and the alternate client credential alias:
+
+```powershell
+$env:TEST_DATA_ALIAS="c008"
+$env:ENVIRONMENT="dev"
+$env:CLIENT_ALIAS="c008Approver"
+npx playwright test <approval-test-path>
+```
+
+Both users read functional data from `test-data/clients/c008/dev/`. No code changes are required.
 
 ---
 

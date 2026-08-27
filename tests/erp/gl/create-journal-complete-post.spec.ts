@@ -1,10 +1,10 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { CreateJournalPage } from "../../../pages/erp/gl/create-journal.page";
-import { loadCreateJournalData } from "../../../utils/test-data/load-create-journal-data";
+import { loadCreateJournalData } from "../../../utils/erp/gl/load-create-journal-data";
 
 test("user can create, complete, and post a journal", async ({ page }) => {
   test.setTimeout(180_000);
@@ -13,7 +13,7 @@ test("user can create, complete, and post a journal", async ({ page }) => {
   const journalDataFilePath = path.join(
     "test-data",
     "clients",
-    env.clientAlias,
+    requireTestDataAlias(),
     env.environment,
     "gl",
     "create-journal.json",

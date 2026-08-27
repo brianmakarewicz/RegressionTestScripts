@@ -1,29 +1,26 @@
+import path from "node:path";
 import { test } from "@playwright/test";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { JournalApprovalsPage } from "../../../pages/erp/gl/journal-approvals.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
+import { loadWithdrawDeleteJournalsData } from "../../../utils/erp/gl/load-withdraw-delete-journals-data";
 
 test("user can withdraw and delete a journal batch", async ({ page }) => {
   test.setTimeout(180_000);
 
-  // Require an explicit batch name so the test cannot target an arbitrary journal.
-  const journalBatchName = process.env.GL_JOURNAL_BATCH_NAME;
-
-  if (!journalBatchName) {
-    throw new Error("GL_JOURNAL_BATCH_NAME is required");
-  }
-
-  // Deletion remains disabled unless the operator explicitly authorizes it.
-  const journalBatchDeletionEnabled =
-    process.env.GL_ENABLE_JOURNAL_BATCH_DELETE?.toLowerCase() === "true";
-
-  if (!journalBatchDeletionEnabled) {
-    throw new Error(
-      "GL_ENABLE_JOURNAL_BATCH_DELETE must be set to true",
-    );
-  }
+  const journalDataFilePath = path.join(
+    "test-data",
+    "clients",
+    requireTestDataAlias(),
+    env.environment,
+    "gl",
+    "withdraw-delete-journals.json",
+  );
+  const { journalBatchName } =
+    loadWithdrawDeleteJournalsData(journalDataFilePath);
 
   // Initialize the workflow and page objects used by the scenario.
   const authentication = new AuthenticationWorkflow(page);

@@ -1,9 +1,11 @@
+import path from "node:path";
 import { test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { env, requireTestDataAlias } from "../../../config/environment";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { AutoReverseJournalsPage } from "../../../pages/erp/gl/auto-reverse-journals.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
+import { loadRunAutoReverseJournalData } from "../../../utils/erp/gl/load-run-autoreverse-journal-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async (
@@ -12,27 +14,22 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async (
 ) => {
   test.setTimeout(420_000);
 
-  // Require the exact approved journal batch prepared by the preceding tests.
-  const journalBatchName = process.env.GL_JOURNAL_BATCH_NAME;
-  const reversalPeriod = process.env.GL_REVERSAL_PERIOD;
-  const dataAccessSet = env.glDataAccessSet;
-  const ledgerName = env.glLedger;
-
-  if (!journalBatchName) {
-    throw new Error("GL_JOURNAL_BATCH_NAME is required");
-  }
-
-  if (!ledgerName) {
-    throw new Error("ORACLE_GL_LEDGER is required");
-  }
-
-  if (!dataAccessSet) {
-    throw new Error("ORACLE_GL_DATA_ACCESS_SET is required");
-  }
-
-  if (!reversalPeriod) {
-    throw new Error("GL_REVERSAL_PERIOD is required");
-  }
+  const autoReverseDataFilePath = path.join(
+    "test-data",
+    "clients",
+    requireTestDataAlias(),
+    env.environment,
+    "gl",
+    "run-autoreverse-journal.json",
+  );
+  const {
+    journalBatchName,
+    ledger: ledgerName,
+    dataAccessSet,
+    reversalPeriod,
+    category,
+    reversalMethod,
+  } = loadRunAutoReverseJournalData(autoReverseDataFilePath);
 
   const authentication = new AuthenticationWorkflow(page);
   const navigatorPage = new FusionNavigatorPage(page);
@@ -58,13 +55,13 @@ test("GL 4.1.6 - user can run AutoReverse for an accrual journal", async (
   await editJournalPage.waitForEditJournalPage();
   await editJournalPage.verifyJournalBatchName(journalBatchName);
   await editJournalPage.verifyLedger(ledgerName);
-  await editJournalPage.verifyCategory("Accrual");
+  await editJournalPage.verifyCategory(category);
 
   // Confirm the journal is configured for the requested automatic reversal.
   await editJournalPage.showJournalDetails();
   await editJournalPage.openReversalTab();
   await editJournalPage.verifyReversalPeriod(reversalPeriod);
-  await editJournalPage.verifyReversalMethod("Switch DR or CR");
+  await editJournalPage.verifyReversalMethod(reversalMethod);
   await editJournalPage.verifyReversalStatus("Not reversed");
 
   // Return through the Journals workspace and open the AutoReverse task.

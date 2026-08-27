@@ -1,4 +1,5 @@
 import { type Page } from '@playwright/test';
+import type { AuthenticationProfile } from '../config/authentication-profile';
 import { FusionLoginPage } from '../pages/common/fusion-login.page';
 
 /**
@@ -7,8 +8,14 @@ import { FusionLoginPage } from '../pages/common/fusion-login.page';
 export class AuthenticationWorkflow {
   private readonly loginPage: FusionLoginPage;
 
-  constructor(page: Page) {
-    this.loginPage = new FusionLoginPage(page);
+  constructor(
+    page: Page,
+    authentication?: Pick<
+      AuthenticationProfile,
+      'baseUrl' | 'username' | 'password'
+    >,
+  ) {
+    this.loginPage = new FusionLoginPage(page, authentication);
   }
 
   /**
