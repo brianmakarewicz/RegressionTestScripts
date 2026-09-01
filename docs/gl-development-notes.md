@@ -921,14 +921,6 @@ Destinations:
 
 Each navigation method waits for the expanded actions, selects the requested action, and verifies the destination page.
 
-## Open Design Improvements
-
-- Compose dependent tests into reusable workflows that pass generated journal batch names directly instead of requiring manual JSON updates.
-- Replace the fixed approver profile used by GL 4.3.1 with a team-owned configurable authentication alias.
-- Add stronger deletion safeguards, such as an explicit disposable-data marker, before expanding destructive tests.
-- Define and maintain a cross-environment validation matrix for every GL script, including required roles and test data.
-- Evaluate API or hybrid processing for spreadsheet imports that currently require manual ADFdi interaction.
-
 ## Known Oracle UI Behaviors
 
 - The Oracle Home button may be required after authentication.
