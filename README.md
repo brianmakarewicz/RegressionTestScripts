@@ -62,3 +62,7 @@ RegressionTestScripts/
 For detailed framework setup, environment configuration, naming conventions, and team workflow, see:
 
 [Architecture Guide](docs/architecture-guide.md)
+
+For implemented General Ledger scripts, prerequisites, run sequences, validation history, and Oracle UI findings, see:
+
+[Oracle Fusion GL Development Notes](docs/gl-development-notes.md)
