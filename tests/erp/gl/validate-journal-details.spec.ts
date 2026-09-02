@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
@@ -12,12 +12,11 @@ test("user can find a journal batch and validate its details", async ({
 }) => {
   test.setTimeout(60_000);
 
+  const runProfile = requireRunProfile();
+
   // Load the journal identifier and environment-specific expected values.
   const journalDataFilePath = path.join(
-    "test-data",
-    "clients",
-    requireTestDataAlias(),
-    env.environment,
+    runProfile.testDataPath,
     "gl",
     "validate-journal-details.json",
   );
@@ -25,7 +24,10 @@ test("user can find a journal batch and validate its details", async ({
   const journalData = loadValidateJournalDetailsData(journalDataFilePath);
 
   // Initialize the workflow and page objects used by the scenario.
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
   const editJournalPage = new EditJournalPage(page);
