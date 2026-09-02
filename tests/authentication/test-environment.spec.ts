@@ -1,12 +1,13 @@
 import { test } from '@playwright/test';
-import { env } from '../../config/environment';
+import { requireRunProfile } from '../../config/run-profile';
 
 // Diagnostic smoke test for the selected authentication configuration.
 test('loads selected environment configuration', async () => {
-  console.log('Authentication profile:', env.clientAlias);
-  console.log('Test-data profile:', env.testDataAlias ?? 'Not selected');
-  console.log('Environment:', env.environment);
-  console.log('URL:', env.baseUrl);
-  console.log('Username:', env.username);
-  console.log('File:', env.envFilePath);
+  const runProfile = requireRunProfile();
+  const authentication = runProfile.user('standardUser');
+
+  console.log('Run profile:', runProfile.name);
+  console.log('Test-data path:', runProfile.testDataPath);
+  console.log('URL:', authentication.baseUrl);
+  console.log('Username:', authentication.username);
 });
