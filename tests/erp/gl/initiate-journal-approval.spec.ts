@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
@@ -10,18 +10,19 @@ import { loadJournalApprovalData } from "../../../utils/erp/gl/load-journal-appr
 test("user can initiate journal approval with posting", async ({ page }) => {
   test.setTimeout(180_000);
 
+  const runProfile = requireRunProfile();
   const journalDataFilePath = path.join(
-    "test-data",
-    "clients",
-    requireTestDataAlias(),
-    env.environment,
+    runProfile.testDataPath,
     "gl",
     "journal-approval.json",
   );
   const { journalBatchName } = loadJournalApprovalData(journalDataFilePath);
 
   // Initialize the workflow and page objects used by the scenario.
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
   const editJournalPage = new EditJournalPage(page);
