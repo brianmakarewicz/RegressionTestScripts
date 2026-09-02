@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
@@ -13,22 +13,23 @@ test("GL-08 - user can reverse a journal and submit it for posting", async (
 ) => {
   test.setTimeout(300_000);
 
+  const runProfile = requireRunProfile();
   const journalDataFilePath = path.join(
-    "test-data",
-    "clients",
-    requireTestDataAlias(),
-    env.environment,
+    runProfile.testDataPath,
     "gl",
     "journal-reversal.json",
   );
   const journalData = loadJournalReversalData(journalDataFilePath);
 
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
   const editJournalPage = new EditJournalPage(page);
 
-  // Sign in using the selected initial environment (demo/dev for this test).
+  // Sign in using the environment and user selected by the run profile.
   await authentication.login();
   await navigatorPage.goToManageJournalsPage();
 
