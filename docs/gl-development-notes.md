@@ -629,7 +629,7 @@ Submit AutoReverse for one exact eligible journal and validate its resulting bus
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/run-autoreverse-journal.json`
+- Runtime data: `<run-profile testDataPath>/gl/run-autoreverse-journal.json`
 - JSON supplies the exact batch, ledger, data access set, reversal period, category, and reversal method.
 - The journal must be approved and posted, use Category `Accrual`, show `Reversible`, and contain valid reversal information.
 
@@ -643,9 +643,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/run-autoreverse-journal.spec.ts --project=chromium --headed
 ```
 
