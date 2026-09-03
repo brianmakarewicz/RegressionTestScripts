@@ -255,7 +255,6 @@ This legacy path is separate from the run-profile path. It exists so older tests
 - When `RUN_PROFILE` is set, it loads the run profile and exposes its name and `baseUrl`. It does not load a legacy `.env` credential file.
 - When `RUN_PROFILE` is absent, it requires `CLIENT_ALIAS` and `ENVIRONMENT`, loads `environments/.env.<client-alias>.<environment>`, and exposes `ORACLE_BASE_URL`, `ORACLE_USERNAME`, and `ORACLE_PASSWORD` through `env`.
 - `TEST_DATA_ALIAS` remains available to legacy tests through `requireTestDataProfile()` and the compatibility function `requireTestDataAlias()`.
-- `config/authentication-profile.ts` remains available for legacy multi-user code that loads an additional `.env` file directly without changing `process.env`.
 
 The reusable login components support both paths. Run-profile tests pass credentials explicitly:
 

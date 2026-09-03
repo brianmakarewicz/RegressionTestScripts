@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import type { AuthenticationProfile } from "./authentication-profile";
 
 interface RunProfileUser {
   username: string;
@@ -10,12 +11,6 @@ interface RunProfileFile {
   testDataPath: string;
   baseUrl: string;
   users: Record<string, RunProfileUser>;
-}
-
-export interface AuthenticationProfile {
-  baseUrl: string;
-  username: string;
-  password: string;
 }
 
 export interface RunProfile {
@@ -78,7 +73,11 @@ export function requireRunProfile(): RunProfile {
   );
   const baseUrl = requireText(parsed.baseUrl, "baseUrl", filePath);
 
-  if (!parsed.users || typeof parsed.users !== "object") {
+  if (
+    !parsed.users ||
+    typeof parsed.users !== "object" ||
+    Array.isArray(parsed.users)
+  ) {
     throw new Error(`Run profile field 'users' is required: ${filePath}`);
   }
 
@@ -92,6 +91,12 @@ export function requireRunProfile(): RunProfile {
       if (!selectedUser) {
         throw new Error(
           `Run profile user '${name}' was not found. Available users: ${Object.keys(parsed.users).join(", ")}`,
+        );
+      }
+
+      if (typeof selectedUser !== "object" || Array.isArray(selectedUser)) {
+        throw new Error(
+          `Run profile user '${name}' must be an object: ${filePath}`,
         );
       }
 
