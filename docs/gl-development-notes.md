@@ -406,7 +406,10 @@ Run AutoPost with the configured criteria set, validate its generated posting re
 Test data and prerequisites:
 
 - Prepare a fresh complete, unposted journal that does not require approval.
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/run-autopost-journals.json`
+- **Manual prerequisite — Playwright does not create or import this journal:** Use the ADFdi-enabled journal spreadsheet downloaded from Fusion as described in the Import Journals prerequisites. The required ADF Desktop Integrator Excel add-in/extension must already be installed.
+- After completing the journal in the spreadsheet, click `Submit`. For `Option`, select `Submit Journal Import`; for `Descriptive`, select `Yes with validation`. This imports the journal but leaves it unposted for the AutoPost Playwright test.
+- Do not select `Submit Journal Import and Posting`, because that would post the journal before the AutoPost test can exercise it.
+- Runtime data: `<run-profile testDataPath>/gl/run-autopost-journals.json`
 - JSON supplies the case-sensitive original spreadsheet journal base name, target primary ledger, and AutoPost criteria set.
 - Configure an AutoPost criteria set that targets the intended primary ledger.
 - Use a user whose Manage Journals results expose ledger information. The validated creator account worked; an approver-only account did not expose enough ledger information for final row selection.
@@ -425,15 +428,14 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/run-autopost-journals.spec.ts --project=chromium --headed
 ```
 
 Critical findings:
 
 - `AutoPost Journals` selects eligible journals but launches a separate `Post Journals` background request to perform posting. Oracle does not return that second ID in the submission dialog, so the test extracts it from the AutoPost Enterprise Scheduler Job Log.
+- The generated `Post Journals` request may finish with `Warning` when the criteria set also selects unrelated invalid journals. The test accepts `Succeeded` or `Warning` for this subprocess only, then independently requires the configured journal and ledger row to reach `Posted`. A warning does not bypass target-journal validation.
 - Scheduled Processes can briefly render stale results and can collapse its Search panel during refresh. The page object uses exact IDs and bounded state-based retries.
 - Manage Journals can return primary- and reporting-ledger rows for one batch; final validation is scoped to the configured ledger.
 
