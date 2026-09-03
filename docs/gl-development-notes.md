@@ -677,10 +677,14 @@ Import staged journal data, validate its parent and child processes, locate the 
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/import-journals.json`
+- Runtime data: `<run-profile testDataPath>/gl/import-journals.json`
 - JSON supplies Source and Ledger; remaining parameters retain Oracle defaults.
-- Submit every spreadsheet batch through the ADFdi Excel add-in with `Save to Interface`. This stages rows for the Playwright test without importing them first; do not select `Submit Journal Import` or `Submit Journal Import and Posting`.
-- Use a unique name, balanced valid accounts, an eligible accounting period, and a workbook for the same environment.
+- **Manual prerequisite — Playwright does not perform this upload:** Before running the script, the person running it must manually download, complete, and submit the Oracle journal spreadsheet. The Playwright script starts only after journal rows have been staged in Oracle's interface table.
+- To download the spreadsheet from the target Fusion environment, navigate to **General Accounting > Manage Journals**, click **Done**, open the **Tasks** menu, and under **Journals** select **Create Journal in Spreadsheet**.
+- The workstation must have the Oracle ADF Desktop Integration (ADFdi) Excel add-in/extension. In Fusion, open **Navigator > Tools > Download ADF Desktop Integrator**. Open the downloaded installer and follow its prompts to install the add-in. When installation is complete, open Microsoft Excel and sign in using your Fusion credentials before using the journal workbook.
+- Open the downloaded workbook in Microsoft Excel and enter a unique batch name, balanced valid accounts, an eligible accounting period, and the other required journal values for the same Fusion environment.
+- In the spreadsheet, set the `Submission` field to `Save to Interface`, then click `Submit`. This manually stages the spreadsheet rows for the Playwright test without importing them.
+- Do not select `Submit Journal Import` or `Submit Journal Import and Posting`. Those options would perform work that the Playwright test is responsible for performing after it starts.
 - With Group ID left at `All Group IDs`, Oracle attempts every eligible staged group for the selected Source and Ledger, including rows uploaded by earlier tests or other users. Invalid stale rows can therefore turn an otherwise valid run into Warning.
 - This flow requires Approval Status `Not required`. Its Post action expects Oracle to submit a posting process immediately; it does not sign in as a separate approver.
 
@@ -699,9 +703,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/import-journals-from-subledger.spec.ts --project=chromium --headed
 ```
 

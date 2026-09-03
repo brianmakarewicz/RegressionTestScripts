@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processes.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
@@ -15,24 +15,25 @@ test("GL 4.1.3 - user can submit Import Journals", async (
 ) => {
   test.setTimeout(420_000);
 
+  const runProfile = requireRunProfile();
   const dataFilePath = path.join(
-    "test-data",
-    "clients",
-    requireTestDataAlias(),
-    env.environment,
+    runProfile.testDataPath,
     "gl",
     "import-journals.json",
   );
   const importData = loadImportJournalsData(dataFilePath);
 
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
   const scheduledProcessesPage = new ScheduledProcessesPage(page);
   const editJournalPage = new EditJournalPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
   const importJournalsPage = new ImportJournalsPage(page);
 
-  // Use the selected client and environment file to authenticate to Fusion.
+  // Use the environment and user selected by the run profile.
   await authentication.login();
 
   // Reach the Journals workspace through the repository's established GL
