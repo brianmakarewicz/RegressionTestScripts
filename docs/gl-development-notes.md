@@ -220,7 +220,7 @@ Status:
 
 Relevant files:
 
-- `config/authentication-profile.ts`
+- `config/run-profile.ts`
 - `pages/erp/gl/create-journal.page.ts`
 - `pages/erp/gl/manage-journals.page.ts`
 - `pages/erp/gl/edit-journal.page.ts`
@@ -235,12 +235,12 @@ Create and submit a two-fund journal, verify that Oracle assigns an approver, ap
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/create-interfund-journal.json`
+- Runtime data: `<run-profile testDataPath>/gl/create-interfund-journal.json`
 - Sanitized example: `test-data/examples/gl/create-interfund-journal.example.json`
 - Configure exactly two original lines. Each line must have an eight-segment account, the declared Fund must match the account's first segment, the Funds must differ, and each line must contain either a debit or credit but not both.
 - Total debits and credits must balance, and the configured attachment must exist.
-- The creator must be able to create, complete, and submit journals for the configured ledger.
-- A separate approver authentication profile must exist for the same environment. The approver must have journal approval authority and access to the configured approver data access set.
+- The run profile's `standardUser` must be able to create, complete, and submit journals for the configured ledger.
+- The same run profile must define a separate `glApprover` user on the same Fusion URL. This user must have journal approval authority and access to the configured approver data access set.
 
 Workflow and validation:
 
@@ -249,27 +249,26 @@ Workflow and validation:
 3. Save, complete, and submit the journal with posting requested.
 4. Verify the Action Log contains `Sent for approval with posting`.
 5. Leave the journal, reopen it through Manage Journals, and retry until the Action Log contains at least one `Assigned to` action.
-6. Open a separate browser context, authenticate as the approver, select the configured data access set, and approve the exact batch.
+6. Open a separate browser context, authenticate as the run profile's `glApprover`, select the configured data access set, and approve the exact batch.
 7. Poll the exact batch-and-ledger result until Approval Status is `Approved` and Batch Status is `Posted`.
 8. Reopen the journal and verify exactly two additional lines have Description `Ledger intercompany balancing line.`
 
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<creator credential alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/create-interfund-journal-submit.spec.ts --project=chromium --headed --workers=1
 ```
 
 Critical findings:
 
 - In the validated approval configuration, omitting the journal-level attachment caused Oracle Workflow to reject the journal automatically. The test attaches the file before entering journal lines.
-- Approval assignment is asynchronous. The test returns through Manage Journals and reloads the exact batch instead of asserting immediately after submission.
+- Approval assignment is asynchronous and can take several minutes. The test performs its first three checks at 30-second intervals, then checks at one-minute intervals for a bounded period while repeatedly returning through Manage Journals and reloading the exact batch.
+- Automatic Playwright retries are disabled for this state-changing test because every retry would create and submit another real journal. A failed run must be reviewed before starting a new one.
 - The approver uses a fresh browser context so creator and approver cookies and session storage remain isolated.
 - The approver must select the data access set associated with the journal's ledger before searching for the batch.
 - Approval can complete before posting does; final validation polls for both business states.
-- The test currently expects a fixed local approver credential profile. Replace that profile with a team-owned neutral alias or make it configurable before expanding the test to additional approvers.
+- The test selects the creator as `standardUser` and the approver as `glApprover` from the same run profile, keeping both sessions on the profile's single Fusion URL.
 
 Status:
 
@@ -728,7 +727,7 @@ These requirements describe each script's standalone prerequisites. Multi-script
 | --- | --- | --- | --- |
 | `create-journal-save-close.spec.ts` | No | `create-journal.json` and attachment | Not applicable; the script creates a unique journal and saves it. |
 | `create-journal-complete-post.spec.ts` | No | `create-journal.json` and attachment | Not applicable; the script creates, completes, and selects Post. Approval rules can determine whether posting is immediate. |
-| `create-interfund-journal-submit.spec.ts` | No | `create-interfund-journal.json`, attachment, and separate approver authentication profile | Two balanced original lines use different Funds; the creator can submit; the journal routes to an authorized approver with access to the target ledger's data access set. |
+| `create-interfund-journal-submit.spec.ts` | No | `create-interfund-journal.json`, attachment, and run-profile users `standardUser` and `glApprover` | Two balanced original lines use different Funds; the creator can submit; the journal routes to an authorized approver with access to the target ledger's data access set. |
 | `initiate-journal-approval.spec.ts` | Yes | `journal-approval.json` | Exact saved batch is balanced, can be completed, and its amount and approval route cause manual approval. |
 | `approve-journal.spec.ts` | Yes | `journal-approval.json`; separate approver authentication profile | Exact batch is unposted, `In process`, and assigned to the approver. |
 | `manually-post-journal.spec.ts` | Yes | `manually-post-journal.json` | Exact saved batch appears as one unambiguous search result, `Post Batch` is enabled, and the configured user can submit it into approval with posting requested. |
