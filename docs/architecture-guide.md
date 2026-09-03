@@ -78,6 +78,49 @@ The actual client mapping should be maintained outside of GitHub.
 
 # Environment Configuration
 
+## The three files under `config/`
+
+These files have different responsibilities despite all being related to authentication configuration:
+
+| File | What it does | What a test developer does with it |
+| --- | --- | --- |
+| `config/run-profile.ts` | Reads the `RUN_PROFILE` value from the command, opens the matching `.json` file under `environments/run-profiles/`, validates it, and provides the selected URL, test-data path, and named users. | Add an import statement at the top of a test, then call `requireRunProfile()` inside the test. This is how the test receives the profile selected by the command. |
+| `config/authentication-profile.ts` | Describes the three values required for login: `baseUrl`, `username`, and `password`. It is only a TypeScript definition; it does not read a file, select a user, or sign in. | Normally, do nothing with this file when writing a test. The configuration loader and login classes use it internally to agree on the required values. |
+| `config/environment.ts` | Loads credentials using the older `.env` method when a test has not yet been changed to use `RUN_PROFILE`. This keeps those existing tests working. | Leave it in an older test until that test is updated. Do not add it to a test that uses `requireRunProfile()` unless framework-level fallback behavior is being maintained. |
+
+In TypeScript, **importing** means adding a statement at the top of a file so that code from another file can be used. For this framework, the test adds:
+
+```typescript
+import { requireRunProfile } from "../../../config/run-profile";
+```
+
+The exact number of `../` segments depends on where the test file is located. After that line is added, the test can call:
+
+```typescript
+const runProfile = requireRunProfile();
+```
+
+The preferred path is therefore:
+
+```text
+Test
+  → config/run-profile.ts                 loads the selected profile and user
+  → config/authentication-profile.ts      checks the returned value's TypeScript shape
+  → AuthenticationWorkflow               performs login using those values
+```
+
+The compatibility path is:
+
+```text
+Legacy test
+  → config/environment.ts                 loads the older .env configuration
+  → AuthenticationWorkflow(page)          uses those fallback values
+```
+
+`config/authentication-profile.ts` is shared by the framework but is not an alternative configuration path. `config/environment.ts` and `config/run-profile.ts` are alternative ways of sourcing configuration: the first is retained for older tests, and the second is the required choice for new tests.
+
+`FusionLoginPage` still imports `config/environment.ts` because it must support legacy callers that do not pass credentials. When `RUN_PROFILE` is set, `environment.ts` recognizes the run-profile selection and does not require or load the legacy `.env` file. A new test passes `runProfile.user(...)` explicitly, and those explicit values take precedence over the fallback.
+
 The TypeScript entry point used by a run-profile test is:
 
 ```text
@@ -118,9 +161,10 @@ The contents of that file look like this:
 | 1 | PowerShell | Sets `RUN_PROFILE=com-dev`. |
 | 2 | `config/run-profile.ts` | Reads `RUN_PROFILE` and loads `environments/run-profiles/com-dev.json`. |
 | 3 | `create-journal-save-close.spec.ts` | Requests `standardUser` and the Create Journal data file. |
-| 4 | `AuthenticationWorkflow` | Receives the selected user's URL, username, and password. |
-| 5 | Create Journal data loader | Loads and validates `<testDataPath>/gl/create-journal.json`. |
-| 6 | Page Objects | Sign in and perform the Create Journal actions in Oracle Fusion. |
+| 4 | `config/authentication-profile.ts` | Defines the shared TypeScript shape for the selected URL, username, and password. It does not load credentials. |
+| 5 | `AuthenticationWorkflow` | Receives the selected user's values using that shared shape. |
+| 6 | Create Journal data loader | Loads and validates `<testDataPath>/gl/create-journal.json`. |
+| 7 | Page Objects | Sign in and perform the Create Journal actions in Oracle Fusion. |
 
 ## What happens when a test is started
 
@@ -813,6 +857,29 @@ Only three components participate when a business test signs in:
 1. `config/run-profile.ts` loads the selected profile and returns the requested named user's URL and credentials.
 2. `pages/common/fusion-login.page.ts` interacts with the Oracle sign-in page.
 3. `workflows/authentication.workflow.ts` coordinates navigation, credential submission, and Fusion home-page readiness.
+
+The framework also has one supporting TypeScript contract:
+
+```text
+config/authentication-profile.ts
+```
+
+It defines `AuthenticationProfile` as an object containing `baseUrl`, `username`, and `password`. It does not read JSON, load a `.env` file, choose a user, or perform login actions.
+
+The file is separate because the same shape is shared across three layers:
+
+```text
+config/run-profile.ts
+        creates authentication values
+                    ↓
+config/authentication-profile.ts
+        defines the required value shape
+                    ↓
+AuthenticationWorkflow and FusionLoginPage
+        accept and use those values
+```
+
+Keeping the contract separate prevents each layer from defining its own version and prevents the login workflow from depending directly on the run-profile loader. Because it is imported with `import type`, it is used for TypeScript checking and does not add runtime behavior.
 
 The files under `tests/authentication/` are optional validation tests for these components. They are not part of the login runtime path and do not need to run before a business test.
 
