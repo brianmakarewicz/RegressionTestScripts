@@ -6,13 +6,11 @@ import { expect, type Locator, type Page } from "@playwright/test";
 export class FusionNotificationsPage {
   constructor(private readonly page: Page) {}
 
-  /*private notificationButton(): Locator {
-    return this.page
-      .getByRole("link", { name: "Notifications (4 unread)", exact: false });
-  }*/
   private notificationButton(): Locator {
-  return this.page.getByRole("link", {name: /^Notifications(?: \(\d+ unread\))?$/ });
-}
+    return this.page.getByRole("link", {
+      name: /^Notifications(?: \(\d+ unread\))?$/,
+    });
+  }
 
   private showAllLink(): Locator {
     return this.page.getByRole("link", { name: "Show All", exact: true });
@@ -35,43 +33,39 @@ export class FusionNotificationsPage {
 
   /**
    * Opens Notifications through the available panel link.
-   *
-   * Returns false when the signed-in user has no Show All or More Details link.
    */
-  async openNotificationsPageIfAvailable(): Promise<Page | null> {
+  async openNotificationsPage(): Promise<Page> {
     const showAllLink = this.showAllLink();
     const moreDetailsLink = this.moreDetailsLink();
 
-    const hasAvailableLink = await expect
+    await expect
       .poll(
         async () =>
           (await showAllLink.isVisible()) || (await moreDetailsLink.isVisible()),
         {
-          message: "Waiting for a Show All or More Details notification link",
+          message: "Expected a Show All or More Details notification link",
           timeout: 30_000,
         },
       )
-      .toBe(true)
-      .then(() => true)
-      .catch(() => false);
-
-    if (!hasAvailableLink) {
-      return null;
-    }
+      .toBe(true);
 
     if (await showAllLink.isVisible()) {
-      return this.openNotificationsPage(showAllLink);
+      return this.openNotificationDetailPage(showAllLink);
     }
 
     if (await moreDetailsLink.isVisible()) {
-      return this.openNotificationsPage(moreDetailsLink);
+      return this.openNotificationDetailPage(moreDetailsLink);
     }
 
-    return null;
+    throw new Error("No notification detail link was available to open");
   }
 
   /** Opens the selected notification link and waits for Notifications to load. */
-  private async openNotificationsPage(notificationLink: Locator): Promise<Page> {
+  private async openNotificationDetailPage(
+    notificationLink: Locator,
+  ): Promise<Page> {
+    await notificationLink.click();
+
     // Oracle Fusion opens Notifications in the current browser page, not a popup.
     await expect(
       this.page.getByRole("heading", {
@@ -81,17 +75,16 @@ export class FusionNotificationsPage {
       }),
     ).toBeVisible({ timeout: 30_000 });
 
-    await notificationLink.click();
-
     return this.page;
   }
 
   /** Confirms the Notifications page is ready. */
   async verifyNotificationsPage(notificationsPage: Page): Promise<void> {
     await expect(
-      notificationsPage.getByRole("button", {
-        name: "Worklist",
-        exact: true
+      notificationsPage.getByRole("heading", {
+        name: "Notifications",
+        exact: true,
+        level: 1,
       }),
     ).toBeVisible({ timeout: 30_000 });
   }

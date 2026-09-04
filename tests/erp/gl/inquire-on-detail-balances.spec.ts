@@ -1,12 +1,12 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { env } from "../../../config/environment";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { InquireOnDetailBalancesPage } from "../../../pages/erp/gl/inquire-on-detail-balances.page";
 import { JournalLinesPage } from "../../../pages/erp/gl/journal-lines.page";
 import { SubledgerJournalLinesPage } from "../../../pages/erp/gl/subledger-journal-lines.page";
-import { loadInquireOnDetailBalancesData } from "../../../utils/erp/gl/load-inquire-on-detail-balances-data";
+import { loadInquireOnDetailBalancesData } from "../../../utils/test-data/load-inquire-on-detail-balances-data";
 
 test("user can search detail balances", async ({ page }) => {
   test.setTimeout(180_000);
@@ -14,7 +14,7 @@ test("user can search detail balances", async ({ page }) => {
   const dataFilePath = path.join(
     "test-data",
     "clients",
-    requireTestDataAlias(),
+    env.clientAlias,
     env.environment,
     "gl",
     "inquire-on-detail-balances.json",

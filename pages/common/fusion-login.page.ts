@@ -1,5 +1,4 @@
 import { expect, type Page } from "@playwright/test";
-import type { AuthenticationProfile } from "../../config/authentication-profile";
 import { env } from "../../config/environment";
 
 /**
@@ -9,41 +8,19 @@ import { env } from "../../config/environment";
  * submitting credentials, and confirming that Fusion is ready for use.
  */
 export class FusionLoginPage {
-  private readonly authentication: Pick<
-    AuthenticationProfile,
-    "baseUrl" | "username" | "password"
-  >;
-
-  constructor(
-    private readonly page: Page,
-    authentication?: Pick<
-      AuthenticationProfile,
-      "baseUrl" | "username" | "password"
-    >,
-  ) {
-    this.authentication = authentication ?? {
-      baseUrl: env.baseUrl ?? "",
-      username: env.username ?? "",
-      password: env.password ?? "",
-    };
-  }
+  constructor(private readonly page: Page) {}
 
   // Environment navigation and sign-in page readiness
   async goto(): Promise<void> {
     // Fail before browser navigation when the target environment is not configured.
-    expect(
-      this.authentication.baseUrl,
-      "ORACLE_BASE_URL must be configured",
-    ).toBeTruthy();
+    expect(env.baseUrl, "ORACLE_BASE_URL must be configured").toBeTruthy();
 
     const usernameTextbox = this.page.getByRole("textbox", {
       name: "Username",
       exact: true,
     });
 
-    await this.page.goto(this.authentication.baseUrl, {
-      waitUntil: "domcontentloaded",
-    });
+    await this.page.goto(env.baseUrl!, { waitUntil: "domcontentloaded" });
 
     // OCI occasionally completes the redirect without rendering the sign-in
     // form. Retry the configured entry URL once instead of continuing against
@@ -51,9 +28,7 @@ export class FusionLoginPage {
     try {
       await expect(usernameTextbox).toBeVisible({ timeout: 30_000 });
     } catch {
-      await this.page.goto(this.authentication.baseUrl, {
-        waitUntil: "domcontentloaded",
-      });
+      await this.page.goto(env.baseUrl!, { waitUntil: "domcontentloaded" });
       await expect(usernameTextbox).toBeVisible({ timeout: 30_000 });
     }
 
@@ -69,21 +44,15 @@ export class FusionLoginPage {
   // Credential submission
   async login(): Promise<void> {
     // Validate both credentials before interacting with the sign-in form.
-    expect(
-      this.authentication.username,
-      "ORACLE_USERNAME must be configured",
-    ).toBeTruthy();
-    expect(
-      this.authentication.password,
-      "ORACLE_PASSWORD must be configured",
-    ).toBeTruthy();
+    expect(env.username, "ORACLE_USERNAME must be configured").toBeTruthy();
+    expect(env.password, "ORACLE_PASSWORD must be configured").toBeTruthy();
 
     await this.page
       .getByRole("textbox", { name: "Username", exact: true })
-      .fill(this.authentication.username);
+      .fill(env.username!);
     await this.page
       .getByRole("textbox", { name: "Password", exact: true })
-      .fill(this.authentication.password);
+      .fill(env.password!);
     await this.page.getByRole("button", { name: "Next", exact: true }).click();
   }
 

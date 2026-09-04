@@ -102,43 +102,6 @@ export class EditJournalPage {
     ).toBeVisible();
   }
 
-  async verifyApprovalStatus(expectedApprovalStatus: string): Promise<void> {
-    await this.verifyReadOnlyStatusRow(
-      "ap1:plam3",
-      "Approval Status",
-      expectedApprovalStatus,
-    );
-  }
-
-  /**
-   * Confirms posting generated the expected ledger intercompany balancing
-   * lines in addition to the original journal lines.
-   */
-  async verifyLedgerIntercompanyBalancingLines(
-    originalLineCount: number,
-    expectedBalancingLineCount = 2,
-  ): Promise<void> {
-    const journalLinesTable = this.page.getByRole("table", {
-      name: "Journal Lines",
-      exact: true,
-    });
-
-    await expect(journalLinesTable).toBeVisible({ timeout: 30_000 });
-
-    const journalLineRows = journalLinesTable.locator('tr[_afrrk]');
-    await expect(journalLineRows).toHaveCount(
-      originalLineCount + expectedBalancingLineCount,
-    );
-
-    const balancingLineDescriptions = journalLineRows
-      .locator('span[id$="it4::content"]')
-      .filter({ hasText: /^Ledger intercompany balancing line\.$/ });
-
-    await expect(balancingLineDescriptions).toHaveCount(
-      expectedBalancingLineCount,
-    );
-  }
-
   /**
    * Confirms the imported journal is complete and eligible for posting in an
    * environment where approval is not required.
@@ -202,44 +165,6 @@ export class EditJournalPage {
     ).toBeVisible({ timeout: 30_000 });
   }
 
-  /** Selects the tester-configured period from Oracle's searchable LOV. */
-  async selectReversalPeriod(reversalPeriod: string): Promise<void> {
-    const reversalPeriodTextbox = this.page.getByRole("textbox", {
-      name: "Reversal Period",
-      exact: true,
-    });
-
-    await expect(reversalPeriodTextbox).toBeVisible({ timeout: 30_000 });
-    await reversalPeriodTextbox.click();
-    await reversalPeriodTextbox.fill(reversalPeriod);
-
-    // Select the exact filtered result. ArrowDown can highlight Oracle's
-    // current or recently used period instead of the value just entered.
-    const reversalPeriodOption = this.page.getByRole("gridcell", {
-      name: reversalPeriod,
-      exact: true,
-    });
-
-    await expect(reversalPeriodOption.first()).toBeVisible({
-      timeout: 30_000,
-    });
-    await reversalPeriodOption.first().click();
-
-    await expect(reversalPeriodTextbox).toHaveValue(reversalPeriod);
-  }
-
-  /** Selects how Oracle should construct the reversing debit/credit lines. */
-  async selectReversalMethod(reversalMethod: string): Promise<void> {
-    const reversalMethodSelect = this.page.locator('[id$="soc1::content"]');
-
-    await expect(reversalMethodSelect).toBeVisible({ timeout: 30_000 });
-    await expect(reversalMethodSelect).toHaveJSProperty("tagName", "SELECT");
-    await reversalMethodSelect.selectOption({ label: reversalMethod });
-    await expect(reversalMethodSelect.locator("option:checked")).toHaveText(
-      reversalMethod,
-    );
-  }
-
   async verifyReversalPeriod(expectedPeriod: string): Promise<void> {
     const reversalPeriod = this.page.locator(
       '[id$="ReversePeriodCLOV:sis1:is1::content"]',
@@ -283,68 +208,6 @@ export class EditJournalPage {
 
     await expect(reversalStatusRow).toBeVisible({ timeout: 30_000 });
     await expect(reversalStatusRow).toContainText(expectedStatus);
-  }
-
-  /** Saves reversal configuration without closing or reversing the journal. */
-  async saveJournal(): Promise<void> {
-    const saveButton = this.page.getByRole("button", {
-      name: "Save",
-      exact: true,
-    });
-
-    await expect(saveButton).toBeVisible({ timeout: 30_000 });
-    await expect(saveButton).toBeEnabled();
-    await saveButton.click();
-    await expect(saveButton).toBeEnabled({ timeout: 30_000 });
-  }
-
-  /**
-   * Creates the configured reversal journal and returns Oracle's process ID.
-   */
-  async reverseJournal(): Promise<string> {
-    const journalActionsLink = this.page.getByRole("link", {
-      name: "Journal Actions",
-      exact: true,
-    });
-
-    await expect(journalActionsLink).toBeVisible({ timeout: 30_000 });
-    await journalActionsLink.click();
-
-    const reverseMenuItem = this.page.getByRole("menuitem", {
-      name: "Reverse",
-      exact: true,
-    });
-
-    await expect(reverseMenuItem).toBeVisible({ timeout: 30_000 });
-    await reverseMenuItem.click();
-
-    const confirmationMessage = this.page.locator('div[id$="userRes"]');
-
-    await expect(confirmationMessage).toBeVisible({ timeout: 60_000 });
-    await expect(confirmationMessage).toHaveText(
-      /^Your process \d+ has been submitted\.$/,
-    );
-
-    const confirmationText = (await confirmationMessage.textContent())?.trim();
-    const processId = confirmationText?.match(
-      /^Your process (\d+) has been submitted\.$/,
-    )?.[1];
-
-    if (!processId) {
-      throw new Error(
-        `Reverse confirmation did not contain a process ID: ${confirmationText}`,
-      );
-    }
-
-    const okButton = this.page.locator(
-      'button[id$="userResponsePopupDialogButtonOk"]',
-    );
-
-    await expect(okButton).toBeVisible({ timeout: 30_000 });
-    await okButton.click();
-    await expect(confirmationMessage).toBeHidden({ timeout: 30_000 });
-
-    return processId;
   }
 
   /**
@@ -481,24 +344,6 @@ export class EditJournalPage {
     await expect(
       actionLogTable.getByText(expectedAction, { exact: true }),
     ).toBeVisible({ timeout: 30_000 });
-  }
-
-  async hasActionLogAction(expectedAction: string): Promise<boolean> {
-    const actionLogTable = this.page.getByRole("table", {
-      name: "Action Log",
-    });
-    const escapedAction = expectedAction.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&",
-    );
-    const matchingAction = actionLogTable
-      .locator(
-        'tr[_afrrk] table[summary=""] > tbody > tr > td:nth-child(2)',
-      )
-      .filter({ hasText: new RegExp(`^${escapedAction}$`) })
-      .first();
-
-    return matchingAction.isVisible();
   }
 
   private async verifyApprovalStatusIsRequired(): Promise<void> {
