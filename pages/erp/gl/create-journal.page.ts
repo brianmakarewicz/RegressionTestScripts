@@ -223,7 +223,30 @@ export class CreateJournalPage {
     // Commit the final grid edit before a page-level action such as Save.
     // Oracle ADF can otherwise consume the next key while closing the editor.
     await descriptionTextbox.press("Tab");
-    await expect(descriptionTextbox).toHaveValue(description);
+
+    // ADF can replace this row's Description textbox with a read-only span
+    // on Tab. Both use the it4::content field shown in the captured DOM.
+    // Re-resolve it after blur instead of requiring the textbox to survive.
+    // Compare raw value/text so trimming or dropping the description fails.
+    const committedDescription = lineRow.locator('[id$=":it4::content"]');
+
+    await expect(descriptionTextbox).not.toBeFocused();
+    await expect
+      .poll(
+        () => committedDescription.evaluateAll((elements) =>
+          elements.map((element) =>
+            element instanceof HTMLInputElement ||
+            element instanceof HTMLTextAreaElement
+              ? element.value
+              : element.textContent,
+          ),
+        ),
+        {
+          message: `Journal line ${lineNumber} must retain its Description after Tab commits the edit`,
+          timeout: 30_000,
+        },
+      )
+      .toEqual([description]);
   }
 
   // Journal processing actions
