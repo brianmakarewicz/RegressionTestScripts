@@ -37,14 +37,34 @@ export class InquireOnDetailBalancesPage {
     await expect(combobox).toHaveValue(fallbackValue);
   }
 
-  private periodActivityLinks(): Locator {
+  private async periodActivityLinks(): Promise<Locator> {
+    const periodActivityHeader = this.page.getByRole("columnheader", {
+      // Once this column is sorted, Oracle prepends its sort controls to the
+      // accessible name. Match the label anywhere so the same header is found
+      // both before and after sorting.
+      name: /Period Activity\b/,
+    });
+
+    await expect(periodActivityHeader).toBeVisible({ timeout: 30_000 });
+    const columnIndex = await periodActivityHeader.evaluate((header) =>
+      Array.from(header.parentElement?.children ?? []).indexOf(header),
+    );
+
+    if (columnIndex < 0) {
+      throw new Error("Unable to determine the Period Activity column");
+    }
+
+    // Segment columns and Oracle-generated IDs vary by environment. Resolve
+    // the cell position from the visible header so only Period Activity links
+    // are considered, regardless of the environment's table layout.
     return this.page
       .locator('table[summary="Detail Balances"]')
+      .locator(`tbody > tr > td:nth-child(${columnIndex + 1})`)
       .getByRole("link");
   }
 
-  private firstPeriodActivityLink(): Locator {
-    return this.periodActivityLinks().first();
+  private async firstPeriodActivityLink(): Promise<Locator> {
+    return (await this.periodActivityLinks()).first();
   }
 
   private async periodActivityValue(
@@ -69,7 +89,7 @@ export class InquireOnDetailBalancesPage {
   private async findNonZeroPeriodActivity(): Promise<
     { link: Locator; value: number } | undefined
   > {
-    const activityLinks = this.periodActivityLinks();
+    const activityLinks = await this.periodActivityLinks();
 
     for (let index = 0; index < (await activityLinks.count()); index += 1) {
       const link = activityLinks.nth(index);
@@ -148,7 +168,7 @@ export class InquireOnDetailBalancesPage {
     // The Search Results toolbar can appear before Oracle finishes populating
     // its virtualized data table. Wait for an actual drill-down link rather
     // than using a fixed delay or treating the toolbar as search completion.
-    await expect(this.firstPeriodActivityLink()).toBeVisible({
+    await expect(await this.firstPeriodActivityLink()).toBeVisible({
       timeout: 60_000,
     });
   }
