@@ -17,7 +17,7 @@ if (!runProfile && !environment) {
 
 if (!runProfile && !clientAlias) {
   throw new Error(
-    "CLIENT_ALIAS is required for legacy authentication. Example: c001",
+    "CLIENT_ALIAS is required for legacy authentication. Example: demo",
   );
 }
 

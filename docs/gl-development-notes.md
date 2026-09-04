@@ -2,6 +2,15 @@
 
 > This committed document intentionally uses role-based and environment-based placeholders. Keep real client names, aliases, usernames, URLs, ledger names, account values, and alias mappings outside source control.
 
+Use this document for GL-specific prerequisites, test order, and known Oracle behavior. For the run-profile design, see the [Architecture Guide](architecture-guide.md). For creating a profile or updating a test, see the [Run-Profile Adoption Guide](run-profile-adoption-guide.md).
+
+For a first run:
+
+1. Find the script under **GL Script Prerequisites** and prepare the required Oracle state and local JSON.
+2. Read that script's entry under **Implemented Scripts** for its exact workflow, command, and validations.
+3. If the script depends on another journal operation, follow **Multi-Script Manual Sequences**.
+4. Consult **Known Oracle UI Behaviors** when diagnosing timing, table, approval, or scheduled-process behavior.
+
 ## Client Validation and Functional-Team Escalation
 
 - Validate each script against every supported client environment that has sufficient data and access.
@@ -18,7 +27,7 @@
 - **Run profile:** `RUN_PROFILE` selects one ignored JSON file under `environments/run-profiles/`. That file supplies the Fusion URL, functional-data path, and named users required by the test.
 - **Standard user:** `standardUser` is the normal creator or operator account in a run profile.
 - **GL approver:** `glApprover` is the independently authenticated approval account in a run profile. Only tests that perform approval use it.
-- **Legacy selectors:** `CLIENT_ALIAS`, `TEST_DATA_ALIAS`, and `ENVIRONMENT` remain supported for scripts outside the migrated GL suite; they are not the normal interface documented for these GL scripts.
+- **Legacy selectors:** `CLIENT_ALIAS`, `TEST_DATA_ALIAS`, and `ENVIRONMENT` remain supported for tests that still use the older configuration path; they are not the normal interface for the GL scripts documented here.
 
 ## Implemented Scripts
 
@@ -565,7 +574,7 @@ Critical findings:
 Status:
 
 - Complete: JSON search, conditional sorting, sign-based drill-down, and navigation smoke checks are implemented.
-- Validation: passed with working Period Activity data on August 13, 2026.
+- Validation: passed using a user authorized to inquire on detail balances for the configured ledger and account segments, with non-zero Period Activity available for drill-down.
 
 ### Set Up and Reverse a Journal (GL-08)
 
@@ -759,7 +768,7 @@ These requirements describe each script's standalone prerequisites. Multi-script
 
 ## Environment-Variable Inputs
 
-All migrated GL scripts use one selector:
+All GL scripts documented here use one selector:
 
 ```env
 RUN_PROFILE=<run-profile filename without .json>
@@ -782,7 +791,7 @@ RUN_PROFILE=<run-profile filename without .json>
 
 Tests that approve journals also require `users.glApprover`. The test chooses its required named user; the person running it does not pass a separate user selector. Real run-profile files are ignored by Git.
 
-Backward compatibility remains available for scripts that have not migrated to run profiles. Those older scripts may still use `CLIENT_ALIAS`, `TEST_DATA_ALIAS`, and `ENVIRONMENT` with `environments/.env.<client-alias>.<environment>`. Do not combine those legacy selectors with the GL commands in this document.
+Backward compatibility remains available for tests that still use the older configuration path, as described in the [Architecture Guide](architecture-guide.md). Do not combine those legacy selectors with the GL commands in this document.
 
 ## Multi-Script Manual Sequences
 
