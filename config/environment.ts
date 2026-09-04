@@ -1,52 +1,65 @@
 /**
- * Loads the client- and environment-specific Oracle configuration for a test run.
+ * Loads either the selected run profile or the legacy environment settings.
  */
-import dotenv from 'dotenv';
-import path from 'path';
+import dotenv from "dotenv";
+import path from "node:path";
+import { requireRunProfile } from "./run-profile";
 
-// These selectors must exist before loading credentials or functional data.
-const testDataAlias = process.env.TEST_DATA_ALIAS?.trim().toLowerCase();
+const selectedRunProfile = process.env.RUN_PROFILE?.trim();
+const runProfile = selectedRunProfile ? requireRunProfile() : undefined;
 const clientAlias = process.env.CLIENT_ALIAS?.trim().toLowerCase();
-const environment = process.env.ENVIRONMENT?.toLowerCase();
+const testDataProfile = process.env.TEST_DATA_ALIAS?.trim().toLowerCase();
+const environment = process.env.ENVIRONMENT?.trim().toLowerCase();
 
-if (!environment) {
-  throw new Error('ENVIRONMENT is required. Example: dev');
+if (!runProfile && !environment) {
+  throw new Error("ENVIRONMENT is required. Example: dev");
 }
 
-if (!clientAlias) {
+if (!runProfile && !clientAlias) {
   throw new Error(
-    'CLIENT_ALIAS is required for Oracle authentication. Example: c001',
+    "CLIENT_ALIAS is required for legacy authentication. Example: demo",
   );
 }
 
-// Resolve credentials using the authentication profile and environment.
 const envFilePath = path.resolve(
   process.cwd(),
-  'environments',
-  `.env.${clientAlias}.${environment}`
+  "environments",
+  `.env.${clientAlias}.${environment}`,
 );
 
-// Load Oracle connection values while preserving values already set by the process.
-dotenv.config({ path: envFilePath });
+if (!runProfile) {
+  dotenv.config({ path: envFilePath });
+}
 
-// Expose the selected environment metadata and Oracle connection settings.
 export const env = {
-  testDataAlias,
-  clientAlias,
-  environment,
-  baseUrl: process.env.ORACLE_BASE_URL,
+  runProfile: runProfile?.name,
+  clientAlias: clientAlias ?? "",
+  testDataProfile,
+  testDataAlias: testDataProfile,
+  environment: environment ?? "",
+  baseUrl: runProfile?.baseUrl ?? process.env.ORACLE_BASE_URL,
   username: process.env.ORACLE_USERNAME,
   password: process.env.ORACLE_PASSWORD,
   envFilePath,
 };
 
-/** Returns the selected functional test-data alias or fails with guidance. */
-export function requireTestDataAlias(): string {
-  if (!testDataAlias) {
+export function requireTestDataProfile(): string {
+  if (!testDataProfile) {
     throw new Error(
-      'TEST_DATA_ALIAS is required for tests that load client JSON data. Example: c001',
+      "TEST_DATA_ALIAS is required for legacy tests that load client JSON data",
     );
   }
 
-  return testDataAlias;
+  return testDataProfile;
+}
+
+/** Preserves the existing API while tests migrate to test-data profile naming. */
+export function requireTestDataAlias(): string {
+  if (!testDataProfile) {
+    throw new Error(
+      "TEST_DATA_ALIAS is required for tests that load client JSON data",
+    );
+  }
+
+  return testDataProfile;
 }

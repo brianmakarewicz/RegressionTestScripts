@@ -11,6 +11,10 @@ node_modules/
 environments/.env.*
 !environments/.env.example
 
+# Local run profiles may contain client/user mappings.
+environments/run-profiles/*.json
+!environments/run-profiles/*.example.json
+
 # Local test data
 test-data/**
 !test-data/**/

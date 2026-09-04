@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { JournalApprovalsPage } from "../../../pages/erp/gl/journal-approvals.page";
@@ -11,11 +11,9 @@ import { loadWithdrawDeleteJournalsData } from "../../../utils/erp/gl/load-withd
 test("user can withdraw and delete a journal batch", async ({ page }) => {
   test.setTimeout(180_000);
 
+  const runProfile = requireRunProfile();
   const journalDataFilePath = path.join(
-    "test-data",
-    "clients",
-    requireTestDataAlias(),
-    env.environment,
+    runProfile.testDataPath,
     "gl",
     "withdraw-delete-journals.json",
   );
@@ -23,7 +21,10 @@ test("user can withdraw and delete a journal batch", async ({ page }) => {
     loadWithdrawDeleteJournalsData(journalDataFilePath);
 
   // Initialize the workflow and page objects used by the scenario.
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
   const journalApprovalsPage = new JournalApprovalsPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);

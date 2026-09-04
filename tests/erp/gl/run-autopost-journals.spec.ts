@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { ScheduledProcessesPage } from "../../../pages/common/scheduled-processes.page";
 import { AutoPostJournalsPage } from "../../../pages/erp/gl/auto-post-journals.page";
@@ -15,11 +15,9 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
 ) => {
   test.setTimeout(420_000);
 
+  const runProfile = requireRunProfile();
   const autoPostDataFilePath = path.join(
-    "test-data",
-    "clients",
-    requireTestDataAlias(),
-    env.environment,
+    runProfile.testDataPath,
     "gl",
     "run-autopost-journals.json",
   );
@@ -29,7 +27,10 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
     criteriaSet,
   } = loadRunAutoPostJournalsData(autoPostDataFilePath);
 
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
   const scheduledProcessesPage = new ScheduledProcessesPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
@@ -82,11 +83,13 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
     contentType: "text/plain",
   });
 
-  // Confirm the posting request identified by the AutoPost log completed
-  // successfully.
-  await scheduledProcessesPage.waitForProcessToSucceed(
+  // A broad criteria set can post the target successfully while unrelated
+  // journals make the shared posting request finish with Warning. Continue
+  // for either successful terminal status, then validate the exact target.
+  await scheduledProcessesPage.waitForProcessToReachAcceptedStatus(
     "Post Journals",
     postingProcessId,
+    ["Succeeded", "Warning"],
   );
 
   // Return Home, open General Accounting, and search Manage Journals for the

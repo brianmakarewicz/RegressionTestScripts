@@ -1,7 +1,6 @@
 import path from "node:path";
 import { expect, test } from "@playwright/test";
-import { loadAuthenticationProfile } from "../../../config/authentication-profile";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { CreateJournalPage } from "../../../pages/erp/gl/create-journal.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
@@ -9,17 +8,18 @@ import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
 import { loadCreateInterfundJournalData } from "../../../utils/erp/gl/load-create-interfund-journal-data";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
+// Retrying this state-changing test would create another real journal.
+test.describe.configure({ retries: 0 });
+
 test("GL 4.3.1 - user can create and submit an interfund journal", async ({
   browser,
   page,
 }, testInfo) => {
-  test.setTimeout(360_000);
+  test.setTimeout(900_000);
 
+  const runProfile = requireRunProfile();
   const dataFilePath = path.join(
-    "test-data",
-    "clients",
-    requireTestDataAlias(),
-    env.environment,
+    runProfile.testDataPath,
     "gl",
     "create-interfund-journal.json",
   );
@@ -45,7 +45,10 @@ test("GL 4.3.1 - user can create and submit an interfund journal", async ({
 
   console.log(`GL 4.3.1 Journal Batch Name: ${journalBatchName}`);
 
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
   const createJournalPage = new CreateJournalPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
@@ -103,12 +106,23 @@ test("GL 4.3.1 - user can create and submit an interfund journal", async ({
   await createJournalPage.returnToJournalsWorkspace();
   await navigatorPage.goToManageJournalsFromTasks();
 
-  const maximumAssignmentChecks = 6;
+  const assignmentCheckDelays = [
+    30_000,
+    30_000,
+    30_000,
+    60_000,
+    60_000,
+    60_000,
+    60_000,
+    60_000,
+    60_000,
+    60_000,
+  ];
   let approverAssigned = false;
 
-  for (let attempt = 1; attempt <= maximumAssignmentChecks; attempt += 1) {
+  for (const [index, delay] of assignmentCheckDelays.entries()) {
     // Oracle creates approval assignments asynchronously after submission.
-    await page.waitForTimeout(10_000);
+    await page.waitForTimeout(delay);
     await manageJournalsPage.searchForJournalBatch(journalBatchName);
     // The exact result is present at this point; allow the ADF results table
     // to settle before opening it so a subsequent assignment retry cannot
@@ -125,22 +139,19 @@ test("GL 4.3.1 - user can create and submit an interfund journal", async ({
       break;
     }
 
-    if (attempt < maximumAssignmentChecks) {
+    if (index < assignmentCheckDelays.length - 1) {
       await editJournalPage.returnToManageJournals();
     }
   }
 
   expect(
     approverAssigned,
-    `Journal ${journalBatchName} was not assigned to an approver after ${maximumAssignmentChecks} checks`,
+    `Journal ${journalBatchName} was not assigned to an approver after ${assignmentCheckDelays.length} checks`,
   ).toBe(true);
 
   // Use a fresh browser context so the approver has isolated cookies and
   // session storage while the creator's authenticated session remains intact.
-  const approverAuthentication = loadAuthenticationProfile(
-    "rina",
-    env.environment,
-  );
+  const approverAuthentication = runProfile.user("glApprover");
   const approverContext = await browser.newContext();
 
   try {

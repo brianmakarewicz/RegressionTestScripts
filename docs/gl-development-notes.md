@@ -2,6 +2,15 @@
 
 > This committed document intentionally uses role-based and environment-based placeholders. Keep real client names, aliases, usernames, URLs, ledger names, account values, and alias mappings outside source control.
 
+Use this document for GL-specific prerequisites, test order, and known Oracle behavior. For the run-profile design, see the [Architecture Guide](architecture-guide.md). For creating a profile or updating a test, see the [Run-Profile Adoption Guide](run-profile-adoption-guide.md).
+
+For a first run:
+
+1. Find the script under **GL Script Prerequisites** and prepare the required Oracle state and local JSON.
+2. Read that script's entry under **Implemented Scripts** for its exact workflow, command, and validations.
+3. If the script depends on another journal operation, follow **Multi-Script Manual Sequences**.
+4. Consult **Known Oracle UI Behaviors** when diagnosing timing, table, approval, or scheduled-process behavior.
+
 ## Client Validation and Functional-Team Escalation
 
 - Validate each script against every supported client environment that has sufficient data and access.
@@ -15,9 +24,10 @@
 - **ADF:** Oracle Application Development Framework, the web UI used by Fusion. ADF refreshes controls and tables asynchronously, so tests use state-based waits instead of fixed delays.
 - **ADFdi:** Oracle ADF Desktop Integration, the Excel add-in used to prepare and upload spreadsheet journal data.
 - **Scheduled Processes / ESS:** Oracle's background-job system. A submitted process can launch another child process, so tests capture and follow exact process IDs.
-- **Client credential alias:** `CLIENT_ALIAS` selects `environments/.env.<client-alias>.<environment>`, which supplies the Oracle URL, username, and password.
-- **Test-data alias:** `TEST_DATA_ALIAS` selects the private functional JSON folder under `test-data/clients/<test-data-alias>/<environment>/`. It is required only for tests that load client JSON.
-- **Environment:** `ENVIRONMENT` selects the environment segment used by both credential and test-data paths.
+- **Run profile:** `RUN_PROFILE` selects one ignored JSON file under `environments/run-profiles/`. That file supplies the Fusion URL, functional-data path, and named users required by the test.
+- **Standard user:** `standardUser` is the normal creator or operator account in a run profile.
+- **GL approver:** `glApprover` is the independently authenticated approval account in a run profile. Only tests that perform approval use it.
+- **Legacy selectors:** `CLIENT_ALIAS`, `TEST_DATA_ALIAS`, and `ENVIRONMENT` remain supported for tests that still use the older configuration path; they are not the normal interface for the GL scripts documented here.
 
 ## Implemented Scripts
 
@@ -38,10 +48,11 @@ Create a unique manual journal from environment-specific JSON data and save it w
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/create-journal.json`
+- Runtime data: `<run-profile testDataPath>/gl/create-journal.json`
 - Sanitized example: `test-data/examples/gl/create-journal.example.json`
 - JSON supplies the batch-name prefix, descriptions, balance type, accounting period, attachment, ledger, category, accounts, amounts, and line descriptions.
 - Lines must balance, account combinations must be valid, and the attachment must resolve to a safe existing file.
+- The run profile's `standardUser` must have access to create and save journals for the configured ledger.
 
 Workflow and validation:
 
@@ -55,9 +66,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/create-journal-save-close.spec.ts --project=chromium --headed
 ```
 
@@ -69,7 +78,7 @@ Critical findings:
 Status:
 
 - Complete: JSON loading, unique naming, journal entry, attachment handling, and Save and Close validation are implemented.
-- Validation: passed as the first step in the GL 4.1.6 manual sequence.
+- Validation: passed using a creator with access to create and save journals for the configured ledger.
 
 ### Create Journal — Complete and Post
 
@@ -101,9 +110,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/create-journal-complete-post.spec.ts --project=chromium --headed
 ```
 
@@ -115,7 +122,7 @@ Critical findings:
 Status:
 
 - Complete: journal creation, Save, Complete, and Post submission are implemented.
-- Validation: passed as the preparation step for the withdrawal-and-delete sequence.
+- Validation: passed using a creator with access to create, complete, and submit journals through the configured posting or approval flow.
 
 ### Withdraw and Delete Journals
 
@@ -133,11 +140,12 @@ Withdraw one explicitly named journal batch from approval and permanently delete
 Test data and prerequisites:
 
 - Prepare a unique journal that is pending approval and eligible for withdrawal and deletion.
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/withdraw-delete-journals.json`
+- Runtime data: `<run-profile testDataPath>/gl/withdraw-delete-journals.json`
 - Sanitized example: `test-data/examples/gl/withdraw-delete-journals.example.json`
 - Set the JSON `journalBatchName` field to the exact intended batch.
 - The journal must appear under Pending Approval from Others and show Approval Status `Required`.
 - The configured batch is consumable test data: a successful run permanently deletes it, so the same JSON value cannot be reused unchanged.
+- The run profile's `standardUser` must be authorized to withdraw the journal from approval and delete the resulting journal batch.
 
 Workflow and validation:
 
@@ -152,9 +160,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/withdraw-delete-journals.spec.ts --project=chromium --headed
 ```
 
@@ -167,7 +173,7 @@ Critical findings:
 Status:
 
 - Complete: JSON validation, withdrawal, deletion, and final absence validation are implemented.
-- Validation: passed end to end; the intended disposable journal was deleted.
+- Validation: passed using a user authorized to withdraw journals from approval and delete the intended disposable batch.
 
 ### Validate Journal Details
 
@@ -185,7 +191,7 @@ Find one exact existing journal batch and validate its configured Batch Name, Ba
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/validate-journal-details.json`
+- Runtime data: `<run-profile testDataPath>/gl/validate-journal-details.json`
 - Sanitized example: `test-data/examples/gl/validate-journal-details.example.json`
 - Configure an exact existing batch name and its expected Balance Type and Category.
 - The loader validates required values before browser actions; real journal data remains private.
@@ -200,9 +206,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/validate-journal-details.spec.ts --project=chromium --headed
 ```
 
@@ -220,7 +224,7 @@ Status:
 
 Relevant files:
 
-- `config/authentication-profile.ts`
+- `config/run-profile.ts`
 - `pages/erp/gl/create-journal.page.ts`
 - `pages/erp/gl/manage-journals.page.ts`
 - `pages/erp/gl/edit-journal.page.ts`
@@ -235,12 +239,40 @@ Create and submit a two-fund journal, verify that Oracle assigns an approver, ap
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/create-interfund-journal.json`
+- Runtime data: `<run-profile testDataPath>/gl/create-interfund-journal.json`
 - Sanitized example: `test-data/examples/gl/create-interfund-journal.example.json`
 - Configure exactly two original lines. Each line must have an eight-segment account, the declared Fund must match the account's first segment, the Funds must differ, and each line must contain either a debit or credit but not both.
 - Total debits and credits must balance, and the configured attachment must exist.
-- The creator must be able to create, complete, and submit journals for the configured ledger.
-- A separate approver authentication profile must exist for the same environment. The approver must have journal approval authority and access to the configured approver data access set.
+- The run profile's `standardUser` must be able to create, complete, and submit journals for the configured ledger.
+- The same run profile must define a separate `glApprover` user on the same Fusion URL. This user must have journal approval authority and access to the configured approver data access set.
+
+Two-user execution model:
+
+- This is one Playwright test containing two authenticated user sessions. It is not two test commands, and `RUN_PROFILE` does not change while the test is running.
+- The normal Playwright `page` is the creator session. It signs in with `standardUser`, creates and submits the journal, and remains open while Oracle generates the approval assignment.
+- After an `Assigned to` action appears, the test creates a second browser context with `browser.newContext()`. That context has independent cookies and session storage, so the approver cannot inherit or overwrite the creator's Fusion session.
+- A new page in the isolated context signs in with `glApprover`, selects the approver data access set from the functional JSON, finds the exact generated batch, approves it, and performs the final posting and balancing-line validations.
+- The test does not log the creator out, switch accounts in one page, or share authentication state between users. The approver context is closed in a `finally` block even when approval or validation fails.
+- Both users come from the same private run-profile JSON and use its single `baseUrl`. A two-user profile has this shape:
+
+```json
+{
+  "testDataPath": "test-data/clients/<client>/<environment>",
+  "baseUrl": "<Fusion URL>",
+  "users": {
+    "standardUser": {
+      "username": "<creator username>",
+      "password": "<creator password>"
+    },
+    "glApprover": {
+      "username": "<approver username>",
+      "password": "<approver password>"
+    }
+  }
+}
+```
+
+- Save the real profile as `environments/run-profiles/<run-profile>.json`. Private run-profile JSON files are ignored by Git; never put real credentials in an `*.example.json` file.
 
 Workflow and validation:
 
@@ -249,32 +281,32 @@ Workflow and validation:
 3. Save, complete, and submit the journal with posting requested.
 4. Verify the Action Log contains `Sent for approval with posting`.
 5. Leave the journal, reopen it through Manage Journals, and retry until the Action Log contains at least one `Assigned to` action.
-6. Open a separate browser context, authenticate as the approver, select the configured data access set, and approve the exact batch.
+6. Open a separate browser context, authenticate as the run profile's `glApprover`, select the configured data access set, and approve the exact batch.
 7. Poll the exact batch-and-ledger result until Approval Status is `Approved` and Batch Status is `Posted`.
 8. Reopen the journal and verify exactly two additional lines have Description `Ledger intercompany balancing line.`
 
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<creator credential alias>"
-$env:ENVIRONMENT="<environment>"
-npx playwright test tests/erp/gl/create-interfund-journal-submit.spec.ts --project=chromium --headed --workers=1
+$env:RUN_PROFILE="<run-profile>"
+npx playwright test tests/erp/gl/create-interfund-journal-submit.spec.ts --project=chromium --headed
 ```
 
 Critical findings:
 
 - In the validated approval configuration, omitting the journal-level attachment caused Oracle Workflow to reject the journal automatically. The test attaches the file before entering journal lines.
-- Approval assignment is asynchronous. The test returns through Manage Journals and reloads the exact batch instead of asserting immediately after submission.
+- Approval assignment is asynchronous and can take several minutes. The test performs its first three checks at 30-second intervals, then checks at one-minute intervals for a bounded period while repeatedly returning through Manage Journals and reloading the exact batch.
+- Automatic Playwright retries are disabled for this state-changing test because every retry would create and submit another real journal. A failed run must be reviewed before starting a new one.
 - The approver uses a fresh browser context so creator and approver cookies and session storage remain isolated.
 - The approver must select the data access set associated with the journal's ledger before searching for the batch.
 - Approval can complete before posting does; final validation polls for both business states.
-- The test currently expects a fixed local approver credential profile. Replace that profile with a team-owned neutral alias or make it configurable before expanding the test to additional approvers.
+- The test selects the creator as `standardUser` and the approver as `glApprover` from the same run profile, keeping both sessions on the profile's single Fusion URL.
+- If a run fails after submission, use the unique batch name printed in the console and stored in the `GL 4.3.1 journal handoff` attachment to inspect the existing journal before rerunning. A rerun creates a different journal; it does not resume the prior batch.
 
 Status:
 
 - Complete: end-to-end creation, submission, assignment, independent approval, posting, and balancing-line validation are implemented.
-- Validation: passed in a development environment on August 27, 2026.
+- Validation: passed using a creator with journal-submission access and a separate approver with approval authority and data-access-set access for the configured ledger.
 
 ### Initiate Journal Approval (GL 4.4.1)
 
@@ -296,7 +328,7 @@ Test data and prerequisites:
 
 - First create a unique balanced journal with `create-journal-save-close.spec.ts`.
 - The amount must trigger manual approval. The validated journal used a USD 20,000 debit and credit; a lower amount was approved automatically in that environment.
-- Set the exact saved batch name in `test-data/clients/<test-data-alias>/<environment>/gl/journal-approval.json`.
+- Set the exact saved batch name in `<run-profile testDataPath>/gl/journal-approval.json`.
 - The journal must remain balanced, unposted, and eligible for Complete and Post.
 - The creator must have a valid approval route. In the validated environment, the creator account required an authorized approver as its manager because the supervisory rule failed without a supervisor.
 
@@ -312,9 +344,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<creator credential alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/initiate-journal-approval.spec.ts --project=chromium --headed
 ```
 
@@ -329,7 +359,7 @@ Critical findings:
 Status:
 
 - Complete: completion, approval submission with posting requested, and Action Log validation are implemented.
-- Validation: passed with a dedicated creator account on August 24, 2026.
+- Validation: passed using a creator with the required journal-submission access and a valid approval route to an authorized approver.
 
 ### Approve Journal (GL 4.4.2)
 
@@ -351,9 +381,9 @@ Test data and prerequisites:
 
 - Run GL 4.4.1 first; the journal must be unposted, `In process`, assigned to the approver, and submitted with posting requested.
 - The approver must differ from the creator.
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/journal-approval.json`
+- Runtime data: `<run-profile testDataPath>/gl/journal-approval.json`
 - Put the exact pending batch name in the JSON `journalBatchName` field.
-- A separate approver credential alias selects the authorized authentication profile, while functional data remains under the same client test-data directory.
+- The selected run profile must contain a `glApprover` user; this standalone test signs in directly as that named user.
 - The approver needs Manage Journals access and approval authority for the target ledger. The validated user had a General Accounting Manager role scoped to that ledger.
 
 Workflow and validation:
@@ -368,9 +398,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<approver credential alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/approve-journal.spec.ts --project=chromium --headed
 ```
 
@@ -383,7 +411,7 @@ Critical findings:
 Status:
 
 - Complete: exact approval, confirmation handling, return navigation, and final Posted polling are implemented.
-- Validation: passed through a separate approver authentication profile on August 24, 2026.
+- Validation: passed using the run profile's separate `glApprover` user with Manage Journals access and approval authority for the configured ledger.
 
 ### Run AutoPost Journals (GL 4.4.3)
 
@@ -406,7 +434,10 @@ Run AutoPost with the configured criteria set, validate its generated posting re
 Test data and prerequisites:
 
 - Prepare a fresh complete, unposted journal that does not require approval.
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/run-autopost-journals.json`
+- **Manual prerequisite — Playwright does not create or import this journal:** Use the ADFdi-enabled journal spreadsheet downloaded from Fusion as described in the Import Journals prerequisites. The required ADF Desktop Integrator Excel add-in/extension must already be installed.
+- After completing the journal in the spreadsheet, click `Submit`. For `Option`, select `Submit Journal Import`; for `Descriptive`, select `Yes with validation`. This imports the journal but leaves it unposted for the AutoPost Playwright test.
+- Do not select `Submit Journal Import and Posting`, because that would post the journal before the AutoPost test can exercise it.
+- Runtime data: `<run-profile testDataPath>/gl/run-autopost-journals.json`
 - JSON supplies the case-sensitive original spreadsheet journal base name, target primary ledger, and AutoPost criteria set.
 - Configure an AutoPost criteria set that targets the intended primary ledger.
 - Use a user whose Manage Journals results expose ledger information. The validated creator account worked; an approver-only account did not expose enough ledger information for final row selection.
@@ -425,22 +456,21 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/run-autopost-journals.spec.ts --project=chromium --headed
 ```
 
 Critical findings:
 
 - `AutoPost Journals` selects eligible journals but launches a separate `Post Journals` background request to perform posting. Oracle does not return that second ID in the submission dialog, so the test extracts it from the AutoPost Enterprise Scheduler Job Log.
+- The generated `Post Journals` request may finish with `Warning` when the criteria set also selects unrelated invalid journals. The test accepts `Succeeded` or `Warning` for this subprocess only, then independently requires the configured journal and ledger row to reach `Posted`. A warning does not bypass target-journal validation.
 - Scheduled Processes can briefly render stale results and can collapse its Search panel during refresh. The page object uses exact IDs and bounded state-based retries.
 - Manage Journals can return primary- and reporting-ledger rows for one batch; final validation is scoped to the configured ledger.
 
 Status:
 
 - Complete: parent/child process validation, process-ID evidence, ledger-scoped polling, and final journal validation are implemented.
-- Validation: passed with a creator account on August 24, 2026.
+- Validation: passed using a user with access to run the configured AutoPost criteria set, inspect Scheduled Processes, and view the target ledger in Manage Journals.
 
 ### Manually Post Journal (GL 4.4.4)
 
@@ -460,10 +490,11 @@ Submit one exact prepared journal batch through Post Batch and verify it entered
 Test data and prerequisites:
 
 - Prepare an exact saved journal for which the configured user can select Post Batch.
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/manually-post-journal.json`
+- Runtime data: `<run-profile testDataPath>/gl/manually-post-journal.json`
 - Set the JSON `journalBatchName` field to that exact batch.
 - Oracle must route it into approval and display `Your journal approval request has been submitted.`
 - The test requires exactly one result row; ambiguous exact matches stop execution.
+- The run profile's `standardUser` must be authorized to select Post Batch and have a valid approval route to an authorized approver.
 
 Workflow and validation:
 
@@ -477,9 +508,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/manually-post-journal.spec.ts --project=chromium --headed
 ```
 
@@ -492,7 +521,7 @@ Critical findings:
 Status:
 
 - Complete: safe exact-row selection, Post Batch submission, confirmation, and durable Action Log validation are implemented.
-- Validation: passed on August 24, 2026, after restoring the approval-specific Post Batch confirmation assertion.
+- Validation: passed using a user with Post Batch access and a valid approval route to an authorized approver.
 
 ### Inquire on Detail Balances (GL 4.4.5)
 
@@ -513,7 +542,7 @@ Search detail balances, open a non-zero Period Activity result, and verify navig
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/inquire-on-detail-balances.json`
+- Runtime data: `<run-profile testDataPath>/gl/inquire-on-detail-balances.json`
 - Configure the target ledger, periods, currency, scenario, and client-specific segments.
 - The search must return at least one non-zero Period Activity.
 - Fusion defaults are retained; JSON fills only empty controls.
@@ -530,9 +559,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/inquire-on-detail-balances.spec.ts --project=chromium --headed
 ```
 
@@ -547,7 +574,7 @@ Critical findings:
 Status:
 
 - Complete: JSON search, conditional sorting, sign-based drill-down, and navigation smoke checks are implemented.
-- Validation: passed with working Period Activity data on August 13, 2026.
+- Validation: passed using a user authorized to inquire on detail balances for the configured ledger and account segments, with non-zero Period Activity available for drill-down.
 
 ### Set Up and Reverse a Journal (GL-08)
 
@@ -566,13 +593,14 @@ Configure an existing reversible journal, create its next-period reversal, locat
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/journal-reversal.json`
+- Runtime data: `<run-profile testDataPath>/gl/journal-reversal.json`
 - Sanitized example: `test-data/examples/gl/journal-reversal.example.json`
 - JSON supplies the exact source journal batch, primary ledger, tester-selected reversal period, and reversal method.
 - The source journal must already be approved, posted, and reversible in Oracle Fusion.
 - The journal name must contain Oracle's stable `Manual <ID>` value, which is used to find the generated reversal.
 - Source journals are consumable test data. After a successful reversal, replace `sourceJournalBatchName` with another eligible journal before rerunning the test.
 - The reversal period is normally the period after the source accounting period, but the tester controls the exact valid value through JSON.
+- The run profile's `standardUser` must be authorized to update reversal information, submit the reversal, and select Post Batch for the generated journal.
 
 Workflow and validation:
 
@@ -589,9 +617,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/reverse-journal.spec.ts --project=chromium --headed
 ```
 
@@ -606,7 +632,7 @@ Critical findings:
 Status:
 
 - Complete: reversal configuration, submission, asynchronous discovery, exact primary-ledger selection, and Post Batch confirmation are implemented.
-- Validation: passed on August 24, 2026. The reversal-specific and GL 4.4.4 approval-specific confirmation paths were both retested successfully.
+- Validation: passed using a user authorized to configure and submit journal reversals and to submit the generated reversal through Post Batch.
 
 ### Run AutoReverse Journal (GL 4.1.6)
 
@@ -627,9 +653,10 @@ Submit AutoReverse for one exact eligible journal and validate its resulting bus
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/run-autoreverse-journal.json`
+- Runtime data: `<run-profile testDataPath>/gl/run-autoreverse-journal.json`
 - JSON supplies the exact batch, ledger, data access set, reversal period, category, and reversal method.
 - The journal must be approved and posted, use Category `Accrual`, show `Reversible`, and contain valid reversal information.
+- The run profile's `standardUser` must have access to the configured data access set and authority to submit Run AutoReverse.
 
 Workflow and validation:
 
@@ -641,9 +668,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/run-autoreverse-journal.spec.ts --project=chromium --headed
 ```
 
@@ -655,7 +680,7 @@ Critical findings:
 Status:
 
 - Complete: eligibility, submission, process-ID evidence, and final reversal validation are implemented.
-- Validation: passed as the fourth test in the GL 4.1.6 sequence on August 24, 2026.
+- Validation: passed using a user with access to the configured data access set and authority to submit Run AutoReverse.
 
 ### Import Journals from Subledger (GL 4.1.3)
 
@@ -677,12 +702,17 @@ Import staged journal data, validate its parent and child processes, locate the 
 
 Test data and prerequisites:
 
-- Runtime data: `test-data/clients/<test-data-alias>/<environment>/gl/import-journals.json`
+- Runtime data: `<run-profile testDataPath>/gl/import-journals.json`
 - JSON supplies Source and Ledger; remaining parameters retain Oracle defaults.
-- Submit every spreadsheet batch through the ADFdi Excel add-in with `Save to Interface`. This stages rows for the Playwright test without importing them first; do not select `Submit Journal Import` or `Submit Journal Import and Posting`.
-- Use a unique name, balanced valid accounts, an eligible accounting period, and a workbook for the same environment.
+- **Manual prerequisite — Playwright does not perform this upload:** Before running the script, the person running it must manually download, complete, and submit the Oracle journal spreadsheet. The Playwright script starts only after journal rows have been staged in Oracle's interface table.
+- To download the spreadsheet from the target Fusion environment, navigate to **General Accounting > Manage Journals**, click **Done**, open the **Tasks** menu, and under **Journals** select **Create Journal in Spreadsheet**.
+- The workstation must have the Oracle ADF Desktop Integration (ADFdi) Excel add-in/extension. In Fusion, open **Navigator > Tools > Download ADF Desktop Integrator**. Open the downloaded installer and follow its prompts to install the add-in. When installation is complete, open Microsoft Excel and sign in using your Fusion credentials before using the journal workbook.
+- Open the downloaded workbook in Microsoft Excel and enter a unique batch name, balanced valid accounts, an eligible accounting period, and the other required journal values for the same Fusion environment.
+- In the spreadsheet, set the `Submission` field to `Save to Interface`, then click `Submit`. This manually stages the spreadsheet rows for the Playwright test without importing them.
+- Do not select `Submit Journal Import` or `Submit Journal Import and Posting`. Those options would perform work that the Playwright test is responsible for performing after it starts.
 - With Group ID left at `All Group IDs`, Oracle attempts every eligible staged group for the selected Source and Ledger, including rows uploaded by earlier tests or other users. Invalid stale rows can therefore turn an otherwise valid run into Warning.
 - This flow requires Approval Status `Not required`. Its Post action expects Oracle to submit a posting process immediately; it does not sign in as a separate approver.
+- The run profile's `standardUser` must be authorized to run Import Journals, inspect Scheduled Processes, and post the resulting journal.
 
 Workflow and validation:
 
@@ -699,9 +729,7 @@ Workflow and validation:
 Run command:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/import-journals-from-subledger.spec.ts --project=chromium --headed
 ```
 
@@ -716,7 +744,7 @@ Critical findings:
 Status:
 
 - Complete: import, process validation, report parsing, journal lookup, posting, and final-state validation are implemented.
-- Validation: passed end to end in one development environment and through navigation and process-form submission in another.
+- Validation: passed using a user authorized to run Import Journals, inspect its parent and child scheduled processes, and post the imported journal.
 
 ## GL Script Prerequisites
 
@@ -726,9 +754,9 @@ These requirements describe each script's standalone prerequisites. Multi-script
 | --- | --- | --- | --- |
 | `create-journal-save-close.spec.ts` | No | `create-journal.json` and attachment | Not applicable; the script creates a unique journal and saves it. |
 | `create-journal-complete-post.spec.ts` | No | `create-journal.json` and attachment | Not applicable; the script creates, completes, and selects Post. Approval rules can determine whether posting is immediate. |
-| `create-interfund-journal-submit.spec.ts` | No | `create-interfund-journal.json`, attachment, and separate approver authentication profile | Two balanced original lines use different Funds; the creator can submit; the journal routes to an authorized approver with access to the target ledger's data access set. |
+| `create-interfund-journal-submit.spec.ts` | No | `create-interfund-journal.json`, attachment, and run-profile users `standardUser` and `glApprover` | Two balanced original lines use different Funds; the creator can submit; the journal routes to an authorized approver with access to the target ledger's data access set. |
 | `initiate-journal-approval.spec.ts` | Yes | `journal-approval.json` | Exact saved batch is balanced, can be completed, and its amount and approval route cause manual approval. |
-| `approve-journal.spec.ts` | Yes | `journal-approval.json`; separate approver authentication profile | Exact batch is unposted, `In process`, and assigned to the approver. |
+| `approve-journal.spec.ts` | Yes | `journal-approval.json`; run-profile user `glApprover` | Exact batch is unposted, `In process`, and assigned to the approver. |
 | `manually-post-journal.spec.ts` | Yes | `manually-post-journal.json` | Exact saved batch appears as one unambiguous search result, `Post Batch` is enabled, and the configured user can submit it into approval with posting requested. |
 | `run-autopost-journals.spec.ts` | Yes | `run-autopost-journals.json` | Target journal is complete, unposted, does not require approval, and matches the configured ledger and criteria set. |
 | `inquire-on-detail-balances.spec.ts` | No journal batch | `inquire-on-detail-balances.json` | Configured balance search returns at least one non-zero Period Activity that supports the required drill-down. |
@@ -740,23 +768,30 @@ These requirements describe each script's standalone prerequisites. Multi-script
 
 ## Environment-Variable Inputs
 
-GL scripts load functional JSON, so set these shell selectors before running them:
+All GL scripts documented here use one selector:
 
 ```env
-TEST_DATA_ALIAS=<test-data alias>
-CLIENT_ALIAS=<client credential alias>
-ENVIRONMENT=<environment>
+RUN_PROFILE=<run-profile filename without .json>
 ```
 
-The selected local credential file contains:
+`RUN_PROFILE=demo-dev`, for example, selects `environments/run-profiles/demo-dev.json`. A run profile contains the functional-data directory, one Fusion URL, and its named users:
 
-```env
-ORACLE_BASE_URL=<Fusion URL>
-ORACLE_USERNAME=<Fusion user>
-ORACLE_PASSWORD=<Fusion password>
+```json
+{
+  "testDataPath": "test-data/clients/<client>/<environment>",
+  "baseUrl": "<Fusion URL>",
+  "users": {
+    "standardUser": {
+      "username": "<username>",
+      "password": "<password>"
+    }
+  }
+}
 ```
 
-`CLIENT_ALIAS` selects `environments/.env.<client-alias>.<environment>`. `TEST_DATA_ALIAS` independently selects `test-data/clients/<test-data-alias>/<environment>/gl/`. This separation lets an alternate user, such as an approver credential profile, act on the same functional JSON without creating a user-specific data folder. Credential files contain only the Oracle URL, username, and password.
+Tests that approve journals also require `users.glApprover`. The test chooses its required named user; the person running it does not pass a separate user selector. Real run-profile files are ignored by Git.
+
+Backward compatibility remains available for tests that still use the older configuration path, as described in the [Architecture Guide](architecture-guide.md). Do not combine those legacy selectors with the GL commands in this document.
 
 ## Multi-Script Manual Sequences
 
@@ -773,9 +808,7 @@ ORACLE_PASSWORD=<Fusion password>
 4. Run the manual-posting test:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/manually-post-journal.spec.ts --project=chromium --headed
 ```
 
@@ -790,9 +823,7 @@ These tests are intentionally independent and are run manually one at a time. Th
 2. Create and save the journal:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<creator credential alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/create-journal-save-close.spec.ts --project=chromium --headed
 ```
 
@@ -800,19 +831,15 @@ npx playwright test tests/erp/gl/create-journal-save-close.spec.ts --project=chr
 4. Complete the journal, select Post, and validate that it was sent for approval with posting:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<creator credential alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/initiate-journal-approval.spec.ts --project=chromium --headed
 ```
 
-5. Keep the same exact batch in the selected client's `journal-approval.json`; the approver uses it while authenticating through the separate approver credential alias.
+5. Keep the same exact batch in the run profile's `journal-approval.json`; the approval test reads `glApprover` from the same run profile.
 6. Approve the journal with the authorized approver:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<approver credential alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/approve-journal.spec.ts --project=chromium --headed
 ```
 
@@ -828,9 +855,7 @@ npx playwright test tests/erp/gl/approve-journal.spec.ts --project=chromium --he
 8. Run AutoReverse and validate the completed reversal:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<creator credential alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/run-autoreverse-journal.spec.ts --project=chromium --headed
 ```
 
@@ -844,33 +869,29 @@ npx playwright show-report
 
 These are independent tests that are run manually in sequence. The Create Journal test generates a unique batch name, but it does not automatically pass that value to the Withdraw and Delete test. The batch name must be transferred manually through the selected JSON file.
 
-1. Before creating the journal, confirm that `test-data/clients/<test-data-alias>/<environment>/gl/create-journal.json` contains safe, balanced test data.
+1. Before creating the journal, confirm that `<run-profile testDataPath>/gl/create-journal.json` contains safe, balanced test data.
 2. The configured journal must be eligible for the environment's approval workflow so that it will be available under Pending Approval from Others.
 3. Create the journal, complete it, and select Post:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/create-journal-complete-post.spec.ts --project=chromium --headed
 ```
 
 4. Confirm that the Create Journal test passes.
 5. Manually locate the newly generated journal batch name in Oracle Fusion or in the Playwright test evidence. Do not reuse the name of an older journal.
 6. Confirm that this exact journal is pending approval, safe to delete, and visible under Manage Approvals for Journals > Pending Approval from Others.
-7. Open `test-data/clients/<test-data-alias>/<environment>/gl/withdraw-delete-journals.json` and set the exact generated batch name:
+7. Open `<run-profile testDataPath>/gl/withdraw-delete-journals.json` and set the exact generated batch name:
 
 ```text
 "journalBatchName": "<exact generated journal batch name>"
 ```
 
 8. Carefully verify the complete `journalBatchName` value before continuing. The withdrawal test permanently deletes the selected journal batch.
-9. Run the Withdraw and Delete test using the same test-data alias, client credential alias, and environment that created the journal:
+9. Run the Withdraw and Delete test using the same run profile that created the journal:
 
 ```powershell
-$env:TEST_DATA_ALIAS="<test-data alias>"
-$env:CLIENT_ALIAS="<client alias>"
-$env:ENVIRONMENT="<environment>"
+$env:RUN_PROFILE="<run-profile>"
 npx playwright test tests/erp/gl/withdraw-delete-journals.spec.ts --project=chromium --headed
 ```
 
@@ -893,13 +914,7 @@ npx playwright show-report
 
 13. Remove or replace the deleted `journalBatchName` so a later test cannot accidentally target stale data.
 
-When testing another client credential, test-data profile, or environment, update all four items consistently:
-
-- `TEST_DATA_ALIAS`
-- `CLIENT_ALIAS`
-- `ENVIRONMENT`
-- The corresponding private file under `environments/.env.<client-alias>.<environment>`
-- The corresponding JSON under `test-data/clients/<test-data-alias>/<environment>/gl/`
+When testing another client or environment, select the corresponding run profile and verify that its private JSON points to the intended Fusion URL, functional-data directory, and users. The GL test command itself should need only `RUN_PROFILE` to change.
 
 ## GL Navigation
 

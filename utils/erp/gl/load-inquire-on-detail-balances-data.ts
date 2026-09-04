@@ -21,21 +21,38 @@ function readRequiredString(
   return value.trim();
 }
 
-function readOptionalString(
+function readSegmentDefaults(
   value: unknown,
-  fieldName: string,
   errors: string[],
-): string | undefined {
+): Record<string, string> {
   if (value === undefined) {
-    return undefined;
+    return {};
   }
 
-  if (typeof value !== "string" || value.trim() === "") {
-    errors.push(`${fieldName} must be a non-empty string when provided`);
-    return undefined;
+  if (!isJsonObject(value)) {
+    errors.push("segmentDefaults must be a JSON object when provided");
+    return {};
   }
 
-  return value.trim();
+  const segmentDefaults: Record<string, string> = {};
+
+  for (const [label, defaultValue] of Object.entries(value)) {
+    const normalizedLabel = label.trim();
+
+    if (!normalizedLabel) {
+      errors.push("segmentDefaults labels must be non-empty strings");
+      continue;
+    }
+
+    if (typeof defaultValue !== "string" || !defaultValue.trim()) {
+      errors.push(`segmentDefaults.${label} must be a non-empty string`);
+      continue;
+    }
+
+    segmentDefaults[normalizedLabel] = defaultValue.trim();
+  }
+
+  return segmentDefaults;
 }
 
 /** Loads and validates detail-balance criteria before browser interaction. */
@@ -86,36 +103,7 @@ export function loadInquireOnDetailBalancesData(
       "toAccountingPeriod",
       errors,
     ),
-    currency: readOptionalString(parsedData.currency, "currency", errors),
-    currencyType: readOptionalString(
-      parsedData.currencyType,
-      "currencyType",
-      errors,
-    ),
-    scenario: readOptionalString(parsedData.scenario, "scenario", errors),
-    legalEntity: readOptionalString(
-      parsedData.legalEntity,
-      "legalEntity",
-      errors,
-    ),
-    sbu: readOptionalString(parsedData.sbu, "sbu", errors),
-    region: readOptionalString(parsedData.region, "region", errors),
-    costCenter: readOptionalString(
-      parsedData.costCenter,
-      "costCenter",
-      errors,
-    ),
-    naturalAccount: readOptionalString(
-      parsedData.naturalAccount,
-      "naturalAccount",
-      errors,
-    ),
-    intercompany: readOptionalString(
-      parsedData.intercompany,
-      "intercompany",
-      errors,
-    ),
-    future1: readOptionalString(parsedData.future1, "future1", errors),
+    segmentDefaults: readSegmentDefaults(parsedData.segmentDefaults, errors),
   };
 
   if (errors.length > 0) {

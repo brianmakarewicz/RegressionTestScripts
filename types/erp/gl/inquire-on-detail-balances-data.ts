@@ -3,14 +3,5 @@ export interface InquireOnDetailBalancesData {
   ledgerOrLedgerSet: string;
   fromAccountingPeriod: string;
   toAccountingPeriod: string;
-  currency?: string;
-  currencyType?: string;
-  scenario?: string;
-  legalEntity?: string;
-  sbu?: string;
-  region?: string;
-  costCenter?: string;
-  naturalAccount?: string;
-  intercompany?: string;
-  future1?: string;
+  segmentDefaults: Record<string, string>;
 }

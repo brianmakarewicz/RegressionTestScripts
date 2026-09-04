@@ -33,7 +33,7 @@ export class FusionLoginPage {
     // Fail before browser navigation when the target environment is not configured.
     expect(
       this.authentication.baseUrl,
-      "ORACLE_BASE_URL must be configured",
+      "Authentication configuration must provide a base URL",
     ).toBeTruthy();
 
     const usernameTextbox = this.page.getByRole("textbox", {
@@ -71,11 +71,11 @@ export class FusionLoginPage {
     // Validate both credentials before interacting with the sign-in form.
     expect(
       this.authentication.username,
-      "ORACLE_USERNAME must be configured",
+      "Authentication configuration must provide a username",
     ).toBeTruthy();
     expect(
       this.authentication.password,
-      "ORACLE_PASSWORD must be configured",
+      "Authentication configuration must provide a password",
     ).toBeTruthy();
 
     await this.page

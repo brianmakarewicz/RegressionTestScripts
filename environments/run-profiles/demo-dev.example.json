@@ -1,0 +1,14 @@
+{
+  "testDataPath": "test-data/clients/demo/dev",
+  "baseUrl": "https://example.oraclecloud.com",
+  "users": {
+    "standardUser": {
+      "username": "demo-user",
+      "password": "demo-password"
+    },
+    "glApprover": {
+      "username": "demo-gl-approver",
+      "password": "demo-gl-approver-password"
+    }
+  }
+}

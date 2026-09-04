@@ -14,14 +14,20 @@ export class InquireOnDetailBalancesPage {
   private async useDefaultOrSetAutocompleteValue(
     name: string,
     fallbackValue: string,
+    required = true,
   ): Promise<void> {
     const combobox = this.criteriaCombobox(name);
+
+    if (!required && (await combobox.count()) === 0) {
+      return;
+    }
 
     await expect(combobox).toBeVisible({ timeout: 30_000 });
     const defaultValue = (await combobox.inputValue()).trim();
 
-    if (defaultValue) {
-      // Preserve client- and user-specific defaults supplied by Fusion.
+    if (defaultValue && (!required || defaultValue === fallbackValue)) {
+      // Preserve populated segment defaults. Required search criteria must
+      // match the environment-specific JSON so the run is deterministic.
       await expect(combobox).toHaveValue(defaultValue);
       return;
     }
@@ -31,34 +37,80 @@ export class InquireOnDetailBalancesPage {
     await expect(combobox).toHaveValue(fallbackValue);
   }
 
+  private async periodActivityLinks(): Promise<Locator> {
+    const periodActivityHeader = this.page.getByRole("columnheader", {
+      // Once this column is sorted, Oracle prepends its sort controls to the
+      // accessible name. Match the label anywhere so the same header is found
+      // both before and after sorting.
+      name: /Period Activity\b/,
+    });
+
+    await expect(periodActivityHeader).toBeVisible({ timeout: 30_000 });
+    const columnIndex = await periodActivityHeader.evaluate((header) =>
+      Array.from(header.parentElement?.children ?? []).indexOf(header),
+    );
+
+    if (columnIndex < 0) {
+      throw new Error("Unable to determine the Period Activity column");
+    }
+
+    // Segment columns and Oracle-generated IDs vary by environment. Resolve
+    // the cell position from the visible header so only Period Activity links
+    // are considered, regardless of the environment's table layout.
+    return this.page
+      .locator('table[summary="Detail Balances"]')
+      .locator(`tbody > tr > td:nth-child(${columnIndex + 1})`)
+      .getByRole("link");
+  }
+
+  private async firstPeriodActivityLink(): Promise<Locator> {
+    return (await this.periodActivityLinks()).first();
+  }
+
+  private async periodActivityValue(
+    periodActivityLink: Locator,
+  ): Promise<number> {
+    await expect(periodActivityLink).toBeVisible({ timeout: 30_000 });
+    const displayedValue = (await periodActivityLink.innerText()).trim();
+    const isParenthesized =
+      displayedValue.startsWith("(") && displayedValue.endsWith(")");
+    const normalizedValue = displayedValue.replace(/[$,()\s]/g, "");
+    const numericValue = Number(normalizedValue);
+
+    if (!Number.isFinite(numericValue)) {
+      throw new Error(
+        `Unable to parse Period Activity value: ${displayedValue}`,
+      );
+    }
+
+    return isParenthesized ? -numericValue : numericValue;
+  }
+
+  private async findNonZeroPeriodActivity(): Promise<
+    { link: Locator; value: number } | undefined
+  > {
+    const activityLinks = await this.periodActivityLinks();
+
+    for (let index = 0; index < (await activityLinks.count()); index += 1) {
+      const link = activityLinks.nth(index);
+      const value = await this.periodActivityValue(link);
+
+      if (value !== 0) {
+        return { link, value };
+      }
+    }
+
+    return undefined;
+  }
+
   private async sortPeriodActivity(
     direction: "Ascending" | "Descending",
   ): Promise<void> {
-    const previousFirstActivity =
-      await this.firstPeriodActivityLink().elementHandle();
-    const viewMenuItem = this.page.getByRole("menuitem", {
-      name: "View",
-      exact: true,
-    });
-
-    await expect(viewMenuItem).toBeVisible({ timeout: 30_000 });
-    await viewMenuItem.click();
-
-    const sortMenuItem = this.page.getByRole("menuitem", {
-      name: "Sort",
-      exact: true,
-    });
-
-    await expect(sortMenuItem).toBeVisible({ timeout: 30_000 });
-    await sortMenuItem.click();
-
-    const advancedSortMenuItem = this.page.getByRole("menuitem", {
-      name: "Advanced...",
-      exact: true,
-    });
-
-    await expect(advancedSortMenuItem).toBeVisible({ timeout: 30_000 });
-    await advancedSortMenuItem.click();
+    await this.page.getByRole("menuitem", { name: "View", exact: true }).click();
+    await this.page.getByRole("menuitem", { name: "Sort", exact: true }).click();
+    await this.page
+      .getByRole("menuitem", { name: "Advanced...", exact: true })
+      .click();
 
     const sortBySelect = this.page.locator(
       'select[id$="_srtDlgC0::content"]',
@@ -77,80 +129,31 @@ export class InquireOnDetailBalancesPage {
     await expect(sortBySelect).toBeVisible({ timeout: 30_000 });
     await sortBySelect.selectOption("Period_Activity");
     await expect(directionRadio).toBeVisible();
-    // Oracle renders the associated label over the radio input. Activate the
-    // confirmed label instead of forcing a pointer event through the overlay.
+
     if (!(await directionRadio.isChecked())) {
       await directionLabel.click();
     }
+
     await expect(directionRadio).toBeChecked();
-    await expect(okButton).toBeEnabled();
     await okButton.click();
-
     await expect(sortBySelect).toBeHidden({ timeout: 30_000 });
-
-    // Closing Advanced Sort happens before ADF replaces the result rows. Wait
-    // for the previous first link to leave the DOM so its stale value cannot be
-    // mistaken for the completed sort result.
-    if (previousFirstActivity) {
-      await this.page.waitForFunction(
-        (element) => !element.isConnected,
-        previousFirstActivity,
-        { timeout: 60_000 },
-      );
-    }
-
-    await expect(this.firstPeriodActivityLink()).toBeVisible({
-      timeout: 60_000,
-    });
-  }
-
-  private firstPeriodActivityLink(): Locator {
-    return this.page
-      .locator('table[summary="Detail Balances"]')
-      .locator('a[id$="cl1j_id_17"]')
-      .first();
-  }
-
-  private async firstPeriodActivityValue(): Promise<number> {
-    const periodActivityLink = this.firstPeriodActivityLink();
-
-    await expect(periodActivityLink).toBeVisible({ timeout: 30_000 });
-    const displayedValue = (await periodActivityLink.innerText()).trim();
-    const isParenthesized =
-      displayedValue.startsWith("(") && displayedValue.endsWith(")");
-    const normalizedValue = displayedValue.replace(/[$,()\s]/g, "");
-    const numericValue = Number(normalizedValue);
-
-    if (!Number.isFinite(numericValue)) {
-      throw new Error(
-        `Unable to parse Period Activity value: ${displayedValue}`,
-      );
-    }
-
-    return isParenthesized ? -numericValue : numericValue;
   }
 
   async search(criteria: InquireOnDetailBalancesData): Promise<void> {
-    const configuredFields: Array<[string, string | undefined]> = [
+    const requiredFields: Array<[string, string]> = [
       ["Ledger or Ledger Set", criteria.ledgerOrLedgerSet],
       ["From Accounting Period", criteria.fromAccountingPeriod],
       ["To Accounting Period", criteria.toAccountingPeriod],
-      ["Currency", criteria.currency],
-      ["Currency Type", criteria.currencyType],
-      ["Scenario", criteria.scenario],
-      ["Legal Entity", criteria.legalEntity],
-      ["SBU", criteria.sbu],
-      ["Region", criteria.region],
-      ["Cost Center", criteria.costCenter],
-      ["Natural Account", criteria.naturalAccount],
-      ["Intercompany", criteria.intercompany],
-      ["Future1", criteria.future1],
     ];
 
-    for (const [name, fallbackValue] of configuredFields) {
-      if (fallbackValue !== undefined) {
-        await this.useDefaultOrSetAutocompleteValue(name, fallbackValue);
-      }
+    for (const [name, fallbackValue] of requiredFields) {
+      await this.useDefaultOrSetAutocompleteValue(name, fallbackValue);
+    }
+
+    for (const [name, fallbackValue] of Object.entries(
+      criteria.segmentDefaults,
+    )) {
+      await this.useDefaultOrSetAutocompleteValue(name, fallbackValue, false);
     }
 
     const searchButton = this.page.getByRole("button", {
@@ -165,7 +168,7 @@ export class InquireOnDetailBalancesPage {
     // The Search Results toolbar can appear before Oracle finishes populating
     // its virtualized data table. Wait for an actual drill-down link rather
     // than using a fixed delay or treating the toolbar as search completion.
-    await expect(this.firstPeriodActivityLink()).toBeVisible({
+    await expect(await this.firstPeriodActivityLink()).toBeVisible({
       timeout: 60_000,
     });
   }
@@ -175,33 +178,33 @@ export class InquireOnDetailBalancesPage {
    * client account or amount.
    */
   async openNonZeroPeriodActivity(): Promise<JournalLineSide> {
-    // Avoid sorting when the first row returned by the original search already
-    // provides a usable drill-down amount.
-    const initialActivity = await this.firstPeriodActivityValue();
+    let activity = await this.findNonZeroPeriodActivity();
 
-    if (initialActivity !== 0) {
-      await this.firstPeriodActivityLink().click();
-      return initialActivity > 0 ? "Debit" : "Credit";
+    if (!activity) {
+      for (const direction of ["Descending", "Ascending"] as const) {
+        await this.sortPeriodActivity(direction);
+
+        try {
+          await expect
+            .poll(
+              async () => (await this.findNonZeroPeriodActivity()) !== undefined,
+              { timeout: 30_000 },
+            )
+            .toBe(true);
+          activity = await this.findNonZeroPeriodActivity();
+        } catch {
+          activity = undefined;
+        }
+
+        if (activity) {
+          break;
+        }
+      }
     }
 
-    // Oracle defaults Advanced Sort to Ascending, so use that direction first
-    // and avoid changing the radio unless the descending fallback is needed.
-    await this.sortPeriodActivity("Ascending");
-
-    const ascendingActivity = await this.firstPeriodActivityValue();
-
-    if (ascendingActivity !== 0) {
-      await this.firstPeriodActivityLink().click();
-      return ascendingActivity > 0 ? "Debit" : "Credit";
-    }
-
-    await this.sortPeriodActivity("Descending");
-
-    const descendingActivity = await this.firstPeriodActivityValue();
-
-    if (descendingActivity !== 0) {
-      await this.firstPeriodActivityLink().click();
-      return descendingActivity > 0 ? "Debit" : "Credit";
+    if (activity) {
+      await activity.link.click();
+      return activity.value > 0 ? "Debit" : "Credit";
     }
 
     throw new Error(

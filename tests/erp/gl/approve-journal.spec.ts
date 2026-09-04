@@ -1,6 +1,6 @@
 import path from "node:path";
 import { test } from "@playwright/test";
-import { env, requireTestDataAlias } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { EditJournalPage } from "../../../pages/erp/gl/edit-journal.page";
 import { ManageJournalsPage } from "../../../pages/erp/gl/manage-journals.page";
@@ -10,17 +10,18 @@ import { AuthenticationWorkflow } from "../../../workflows/authentication.workfl
 test("GL 4.4.2 - authorized user can approve a journal", async ({ page }) => {
   test.setTimeout(180_000);
 
+  const runProfile = requireRunProfile();
   const journalDataFilePath = path.join(
-    "test-data",
-    "clients",
-    requireTestDataAlias(),
-    env.environment,
+    runProfile.testDataPath,
     "gl",
     "journal-approval.json",
   );
   const { journalBatchName } = loadJournalApprovalData(journalDataFilePath);
 
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("glApprover"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
   const manageJournalsPage = new ManageJournalsPage(page);
   const editJournalPage = new EditJournalPage(page);

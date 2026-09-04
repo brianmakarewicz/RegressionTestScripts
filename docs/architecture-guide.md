@@ -4,12 +4,14 @@
 
 This repository contains a Playwright automation framework designed to automate testing across multiple Oracle Fusion Cloud clients while keeping client-specific information and credentials out of source control.
 
-The framework supports both:
-
-* UI Testing
-* API Testing
+The established framework documented here uses Playwright for Oracle Fusion UI testing. Taylor Wood's separate accounts-payable API work is outside the scope of the Playwright UI architecture described in this guide.
 
 The framework is designed around reusability, maintainability, and security. The goal is to develop automation once and execute it against multiple clients and multiple environments with little or no code changes.
+
+Related guides:
+
+- [Run-Profile Adoption Guide](run-profile-adoption-guide.md) — updating an existing test and creating its private run profile.
+- [Development Workflow](development-workflow.md) — Git workflow, coding standards, and pull-request checks.
 
 ---
 
@@ -24,77 +26,6 @@ The framework was designed with the following objectives:
 5. Separate framework configuration from Playwright configuration.
 6. Separate page interactions from business workflows.
 7. Build a framework that is easy for multiple developers to maintain.
-
----
-
-# Client Alias Convention
-
-Real client names should never appear in:
-
-* Folder names
-* File names
-* Branch names
-* Test names
-* Comments
-* Configuration files committed to GitHub
-
-Instead, client aliases are used.
-
-| Alias | Actual Client |
-| ----- | ------------- |
-| c001  | Client 1      |
-| c002  | Client 2      |
-| c003  | Client 3      |
-| c004  | Client 4      |
-| c005  | Client 5      |
-| c006  | Client 6      |
-| c007  | Client 7      |
-
-The actual client mapping should be maintained outside of GitHub.
-
----
-
-# Environment Naming Convention
-
-Each client supports multiple environments.
-
-Current environments:
-
-* dev
-* test
-* prod
-
-Environment files follow this convention:
-
-```text
-.env.c001.dev
-.env.c001.test
-.env.c001.prod
-
-.env.c002.dev
-.env.c002.test
-.env.c002.prod
-```
-
-Example:
-
-```text
-environments/
-├── .env.c001.dev
-├── .env.c001.test
-├── .env.c001.prod
-```
-
-When running tests, the credential profile, test-data profile when needed, and environment are selected from the command line.
-
-Example:
-
-```powershell
-$env:TEST_DATA_ALIAS="c001"
-$env:CLIENT_ALIAS="c001"
-$env:ENVIRONMENT="dev"
-npm test
-```
 
 ---
 
@@ -127,488 +58,33 @@ tests/erp/ap/
 
 ---
 
-# Why playwright.config.ts Remains in the Root
+# Current Run-Profile Test Architecture
 
-Playwright expects:
+The following summary shows the preferred run-profile path. The legacy authentication path is documented separately under **Legacy Authentication and Backward Compatibility**.
 
-```text
-playwright.config.ts
-```
+The framework separates configuration, validated functional data, browser interaction, reusable workflows, and business assertions.
 
-to exist in the project root.
+| Stage | Input | Component | Output or action |
+| --- | --- | --- | --- |
+| 1. Select the environment | `RUN_PROFILE` | Run-profile loader | Provides the Fusion URL, named users, and functional-data root. |
+| 2. Select authentication | Role requested by the test, such as `standardUser` | `runProfile.user(...)` | Provides the named authentication profile used for login. |
+| 3. Load business data | Functional JSON below `runProfile.testDataPath` | Data loader | Validates the file and returns typed test data. |
+| 4. Coordinate the scenario | Named authentication profile and validated test data | Business test | Passes login information to the authentication workflow and business values to the appropriate Page Objects. |
+| 5. Automate Oracle Fusion | Instructions from the business test | Workflows and Page Objects | Perform the login and the requested Oracle Fusion business actions. |
 
-Keeping it in the root allows all standard Playwright commands to work without additional configuration.
-
-Examples:
-
-```bash
-npx playwright test
-
-npx playwright test --ui
-
-npx playwright show-report
-
-npx playwright codegen
-```
-
-Moving the configuration file would require passing a custom configuration path for every Playwright command.
-
----
-
-# TypeScript Configuration
-
-The root `tsconfig.json` provides shared editor settings for the Playwright and Node.js TypeScript code.
-
-It currently enables Node type information and identifies the project folders that TypeScript should inspect. This supports consistent editor validation for imports such as `node:fs` and `node:path`.
-
-Playwright continues to control test execution. Command-line type checking and CI enforcement are not currently configured.
-
-The TypeScript configuration should be reviewed as the framework and build process mature.
-
----
-
-# Environment Configuration
-
-Environment configuration is managed through:
+The two inputs meet at the business test:
 
 ```text
-config/environment.ts
-```
-
-This file is responsible for:
-
-1. Reading an optional test-data alias.
-2. Reading the selected environment.
-3. Reading the selected client credential alias.
-4. Building the correct authentication environment file name.
-5. Loading the environment variables using dotenv.
-
-Example:
-
-```powershell
-$env:TEST_DATA_ALIAS="c001"
-$env:CLIENT_ALIAS="c001"
-$env:ENVIRONMENT="dev"
-npm test
-```
-
-With this selection, the framework loads:
-
-```text
-environments/.env.c001.dev
-```
-
-No code changes are required when switching between clients or environments.
-
-## Test-data client and authentication profile
-
-`TEST_DATA_ALIAS` and `CLIENT_ALIAS` have independent responsibilities:
-
-- `TEST_DATA_ALIAS` selects the client folder containing functional JSON test data. It is required only by tests that load client JSON.
-- `CLIENT_ALIAS` selects the local credential profile. It is required by tests that log into Oracle.
-
-This separation was needed because some tests authenticate without loading functional JSON, while some workflows use multiple users against the same client data. Previously, one client alias controlled both concerns. Selecting an approver therefore also pointed the test toward an approver-specific JSON folder, which encouraged duplicate client data. Independent aliases let each test require only what it uses and allow an initiating user and an approver to share one client JSON folder while loading different credentials.
-
-```powershell
-$env:TEST_DATA_ALIAS="c001"
-$env:ENVIRONMENT="dev"
-$env:CLIENT_ALIAS="c001Approver"
-npx playwright test tests/erp/gl/approve-journal.spec.ts --project=chromium --headed
-```
-
-That command loads functional data from:
-
-```text
-test-data/clients/c001/dev/
-```
-
-and credentials from:
-
-```text
-environments/.env.c001approver.dev
-```
-
-To use the client's standard credential profile, set `CLIENT_ALIAS` to that profile explicitly:
-
-```powershell
-$env:CLIENT_ALIAS="c001"
-```
-
-Do not change `TEST_DATA_ALIAS` merely to select another user. Doing so would also select a different functional test-data folder.
-
----
-
-# Environment Variables
-
-The framework supports the following environment variables:
-
-| Variable | Set in | Purpose |
-| --- | --- | --- |
-| `TEST_DATA_ALIAS` | Terminal when needed | Selects `test-data/clients/<test-data-alias>/<environment>/`. Required only for tests that load client JSON. |
-| `ENVIRONMENT` | Terminal | Selects the environment used by both test data and credentials. |
-| `CLIENT_ALIAS` | Terminal when needed | Selects the credential file. Required for tests that log into Oracle. |
-| `ORACLE_BASE_URL` | Credential file | Provides the Oracle Fusion URL. |
-| `ORACLE_USERNAME` | Credential file | Provides the login username. |
-| `ORACLE_PASSWORD` | Credential file | Provides the login password. |
-
-Setting `CLIENT_ALIAS` makes Playwright load the URL, username, and password from a different local credential file. For example, with `TEST_DATA_ALIAS=c001`, `ENVIRONMENT=dev`, and `CLIENT_ALIAS=c001Approver`, the framework reads functional JSON from `test-data/clients/c001/dev/` and credentials from `environments/.env.c001approver.dev`.
-
-The tracked `environments/.env.example` lists all supported variable names. Its terminal selectors are commented examples because they are not stored in credential files. Copy the credential portion when creating a local profile.
-
-Each local credential file contains only Oracle authentication/bootstrap values:
-
-```env
-ORACLE_BASE_URL=https://example.oraclecloud.com
-ORACLE_USERNAME=myusername
-ORACLE_PASSWORD=mypassword
-```
-
-Set the selectors required by the test in the terminal before running Playwright. They cannot be supplied by the selected credential file because the framework needs them first to determine which file or test-data folder to use.
-
-Functional test values such as ledgers, accounting periods, journal names, batch names, and safety flags do not belong in `.env` files. Store those values in the applicable client/environment/module JSON file under:
-
-```text
-test-data/clients/<test-data-alias>/<environment>/<module>/
-```
-
-Environment files are authentication profiles. Functional JSON files are test-data profiles. Keep these concerns separate even when their aliases happen to match.
-
-The variables intentionally use the prefix **ORACLE_** to avoid conflicts with Windows environment variables such as:
-
-```text
-USERNAME
-PASSWORD
-```
-
----
-
-# Git Ignore Rules
-
-Real credentials and real client test data should never be committed to GitHub.
-
-The project ignores all local environment files except the template.
-
-```gitignore
-environments/.env.*
-!environments/.env.example
-```
-
-Tracked:
-
-```text
-environments/.env.example
-```
-
-Ignored:
-
-```text
-environments/.env.c001.dev
-environments/.env.c001.test
-environments/.env.c001.prod
-```
-
-The project also ignores local test data by default.
-
-```gitignore
-test-data/**
-!test-data/**/
-!test-data/.gitkeep
-!test-data/README.md
-!test-data/**/*.example.*
-!test-data/**/example.*
-!test-data/**/.gitkeep
-```
-
-Tracked test data should be limited to sanitized examples or files intentionally approved by the team.
-Example files may use either an `example.` prefix or a `.example.` filename segment so they can be committed without being confused for real client data.
-
-Allowed examples:
-
-```text
-test-data/manual-journal.example.csv
-test-data/manual-journal.example.json
-test-data/attachments/TestFile.example.txt
-test-data/example.manual-journal.csv
-test-data/example.manual-journal.json
-test-data/example.attachments/TestFile.txt
-```
-
-Ignored local files:
-
-```text
-test-data/clients/c001/dev/gl/create-journal.json
-test-data/clients/c001/dev/gl/supporting-document.pdf
-test-data/clients/c001/test/ap/invoice-data.csv
-```
-
-The same logic applies to the output folder for generated logs and run artifacts.
-
-```gitignore
-output/**
-!output/**/
-!output/.gitkeep
-!output/README.md
-!output/**/*.example.*
-!output/**/example.*
-!output/**/.gitkeep
-```
-
-Page Objects should not read test data files directly. Page Objects should receive values from tests, workflows, or data helpers.
-
-Example:
-
-```typescript
-await createJournalPage.enterJournalBatchName(journalBatchName);
-await createJournalPage.chooseAttachmentFile(attachmentFilePath);
-```
-
-This keeps the automation reusable across clients while allowing each client and environment to use its own local data.
-
----
-
-# Create Journal Test Data
-
-Create Journal tests load input data from a JSON file selected by the active test-data alias and environment.
-
-```text
-TEST_DATA_ALIAS + ENVIRONMENT
-            ↓
-Environment-specific JSON file
-            ↓
-Create Journal data loader
-            ↓
-Validated TypeScript data
-            ↓
-Playwright test
-            ↓
-Create Journal Page Object
-```
-
-Runtime data follows this convention:
-
-```text
-test-data/clients/<test-data-alias>/<environment>/gl/create-journal.json
-```
-
-Sanitized examples are stored under:
-
-```text
-test-data/examples/gl/
-```
-
-The test resolves and loads the data file. The data loader validates the contents and returns typed journal data. The Page Object receives the validated values and remains independent of the JSON file structure.
-
-Current validation includes:
-
-- Required fields must contain values.
-- At least two journal lines are required.
-- Each line must contain either a debit or a credit, but not both.
-- Journal amounts must be positive numbers.
-- Total debits must equal total credits.
-- The configured attachment file must exist.
-
-Real environment-specific data remains excluded from source control.
-
----
-
-# Creating a New Client Environment
-
-To add a new client environment:
-
-1. Copy `environments/.env.example` to a local file named for the client alias and environment.
-
-Example:
-
-```text
-environments/.env.c008.dev
-```
-
-Contents:
-
-```env
-ORACLE_BASE_URL=<client url>
-ORACLE_USERNAME=<username>
-ORACLE_PASSWORD=<password>
-```
-
-2. Create the client test-data directory and the module JSON files required by the tests:
-
-```text
-test-data/clients/c008/dev/<module>/
-```
-
-3. Select the client and environment when running the tests:
-
-```powershell
-$env:TEST_DATA_ALIAS="c008"
-$env:CLIENT_ALIAS="c008"
-$env:ENVIRONMENT="dev"
-npx playwright test
-```
-
-4. If a workflow needs another user, create another credential file without creating another client test-data folder:
-
-```text
-environments/.env.c008approver.dev
-```
-
-Run that step of the workflow with the same test-data alias and the alternate client credential alias:
-
-```powershell
-$env:TEST_DATA_ALIAS="c008"
-$env:ENVIRONMENT="dev"
-$env:CLIENT_ALIAS="c008Approver"
-npx playwright test <approval-test-path>
-```
-
-Both users read functional data from `test-data/clients/c008/dev/`. No code changes are required.
-
----
-
-# Framework Validation
-
-Framework validation tests are stored within the area they validate.
-
-Current framework validations include:
-
-- Authentication environment validation (`tests/authentication`)
-- Oracle login validation
-- Navigation validation
-
-As additional framework components are introduced, validation tests should be placed alongside the functional area they support rather than in a generic framework folder.
-
----
-
-# Authentication Framework
-
-The Authentication Framework is the first reusable business component built on top of the Playwright framework.
-
-Its purpose is to provide a single reusable login process that every Oracle Fusion UI test can use.
-
-The authentication layer consists of three components.
-
-## 1. Fusion Login Page
-
-Location:
-
-```text
-pages/common/fusion-login.page.ts
-```
-
-This Page Object represents the Oracle Fusion login page.
-
-Responsibilities include:
-
-* Navigate to Oracle Fusion.
-* Enter username.
-* Enter password.
-* Click the login button.
-* Wait for the Oracle Fusion home page to become ready for automation.
-
-The Page Object is responsible only for interacting with the login page.
-
-It does **not** know why the application is being accessed or what business process follows.
-
----
-
-## 2. Authentication Workflow
-
-Location:
-
-```text
-workflows/authentication.workflow.ts
-```
-
-The workflow combines multiple page actions into one reusable business process.
-
-Instead of every test calling:
-
-```typescript
-await loginPage.goto();
-await loginPage.login();
-await loginPage.waitForFusionHomePage();
-```
-
-tests simply execute:
-
-```typescript
-const authentication = new AuthenticationWorkflow(page);
-
-await authentication.login();
-```
-
-This significantly improves readability and reduces duplicated code.
-
----
-
-## 3. Authentication Test
-
-Location:
-
-```text
-tests/authentication/oracle-login.spec.ts
-```
-
-The authentication test validates that:
-
-* The correct environment configuration is loaded.
-* Oracle Fusion opens successfully.
-* The configured user can authenticate successfully.
-
----
-
-# Login Readiness Strategy
-
-Successful authentication is verified by waiting for the Oracle Fusion home page shell to become available.
-
-The framework validates that the following Oracle Fusion controls are visible:
-
-* Navigator
-* Settings and Actions
-
-This validation confirms that:
-
-* The user is authenticated.
-* Oracle Fusion has finished loading.
-* The Oracle Fusion shell is available.
-* The application is ready for additional automation.
-
-Methods named `waitFor...` should validate page readiness only and should not change the application state by clicking buttons, opening menus, or performing business actions.
-
----
-
-# Framework Architecture
-
-The framework follows a layered architecture.
-
-```text
-Environment Configuration
-            │
-            ▼
-Page Objects
-            │
-            ▼
-Workflows
-            │
-            ▼
-Business Tests
+Named authentication profile ──┐
+                               ├──► Business test ──► Workflows and Page Objects
+Validated functional data ─────┘
 ```
 
 Each layer has a single responsibility.
 
-Each layer should depend only on the layer directly beneath it. Tests should not bypass Workflows to interact directly with Page Objects unless the workflow layer does not add business value.
+Tests coordinate configuration, data, workflows, and page objects. A workflow is appropriate for a reusable multi-page business process; a test may use a page object directly when an additional workflow would not add business meaning.
 
-### Environment Configuration
-
-Provides:
-
-* URLs
-* Credentials
-* Environment selection
-
----
-
-### Page Objects
+## Oracle Fusion Page Objects
 
 Represent individual Oracle pages.
 
@@ -619,29 +95,22 @@ They know:
 
 Examples:
 
-* Fusion Login Page
-* Journals Page
-* Supplier Page
-* Employee Page
+- `FusionLoginPage`
+- `FusionNavigatorPage`
+- `CreateJournalPage`
+- `ManageJournalsPage`
 
 ---
 
-### Workflows
+## Reusable Business Workflows
 
 Represent complete Oracle business processes.
 
-Examples:
-
-* Authentication
-* Create Manual Journal
-* Create Supplier
-* Hire Employee
-
-Workflows coordinate one or more Page Objects.
+The current reusable workflow is `AuthenticationWorkflow`, which coordinates `FusionLoginPage`. Add another workflow only when a business process spanning one or more Page Objects is reused by multiple tests or becomes clearer as a named operation.
 
 ---
 
-### Tests
+## Business Tests
 
 Business tests verify requirements.
 
@@ -651,8 +120,9 @@ Example:
 
 ```typescript
 await authentication.login();
-
-await manualJournal.createJournal();
+await navigatorPage.goToCreateJournalPage();
+await createJournalPage.enterJournalBatchName(journalBatchName);
+await createJournalPage.saveAndClose();
 ```
 
 The test should describe **what** is happening rather than **how** it happens.
@@ -709,138 +179,501 @@ Increasing global timeouts should be considered only after verifying that the ap
 
 ---
 
-# Git Workflow
+# Authentication Framework
 
-Development follows a feature branch workflow.
+This chapter explains how a test selects its environment, loads functional data, chooses a named user, and signs in to Oracle Fusion. The separate [Run-Profile Adoption Guide](run-profile-adoption-guide.md) contains the step-by-step implementation procedure.
 
-## 1. Update Main
+## Selecting a Run Profile by Name
 
-```bash
-git switch main
-git pull origin main
-```
+Before an Oracle Fusion test can sign in, the authentication framework needs to know which Fusion environment to open and which user the test requires. The run profile provides that information. It also points the test to the functional-data folder for the same client environment, keeping authentication and test-data selection aligned through one command value.
 
----
+The naming convention in this section defines how a developer selects that run profile when starting a test.
 
-## 2. Create a Feature Branch
+### What a Run Profile Contains
 
-Example:
+A run profile is one private JSON configuration file with the `.json` file extension. It identifies everything needed to run a test against one client environment:
 
-```bash
-git switch -c bryan/<feature-name>
-```
+- The folder containing that environment's functional test data.
+- The Oracle Fusion URL.
+- One or more users that can sign in to that URL.
 
-Each feature should have its own branch.
-
-Feature branches should be created from the latest version of the `main` branch after synchronizing with the remote repository.
-
-Examples:
-
-* bryan/playwright-setup
-* bryan/manual-journal
-* bryan/api-testing
-
----
-
-## 3. Develop and Test
-
-Make changes locally.
-
-Run tests until everything passes.
-
----
-
-## 4. Commit Changes
-
-```bash
-git status
-git add <intended-files>
-git diff --cached --check
-git commit -m "Describe the completed change"
-```
-
-Commits should represent one logical feature.
-
----
-
-## 5. Push Branch
-
-```bash
-git push -u origin <branch-name>
-```
-
----
-
-## 6. Create a Pull Request
-
-Create a Pull Request from:
+Run profiles live under this repository directory:
 
 ```text
-feature branch
-        ↓
-main
+RegressionTestScripts/
+└── environments/
+    └── run-profiles/
+        ├── demo-dev.example.json  Tracked example without real credentials
+        └── demo-dev.json          Private local profile ignored by Git
 ```
 
-The Pull Request allows other developers to:
+Set the PowerShell environment variable `RUN_PROFILE` to the filename of the profile you want to use, omitting the `.json` extension:
 
-* review the code
-* discuss implementation
-* request changes
-* approve the feature
+```text
+RUN_PROFILE=demo-dev
+            │
+            └── loads environments/run-profiles/demo-dev.json
+```
 
-Only approved Pull Requests should be merged into **main**.
+Real client names should never appear in:
 
----
+* Folder names
+* File names
+* Branch names
+* Test names
+* Comments
+* Configuration files committed to GitHub
 
-## Pull Request Review Flow
+Instead, descriptive but non-sensitive run-profile names are used. `RUN_PROFILE` is the only terminal selector required by a run-profile test.
 
-After a PR is opened:
+| Run profile | Meaning |
+| --- | --- |
+| `demo-dev` | Demo client, development environment |
 
-1. The GitHub review agent checks PRs hourly.
-2. If the PR is clean, the agent may approve or merge it.
-3. If the PR is blocked, the developer fixes the issue and pushes updates.
-4. The agent rechecks within the next hourly review cycle.
-5. A coworker with permission may manually approve or override if needed.
-
----
-
-# Coding Standards
-
-The framework follows these principles:
-
-* Keep tests readable.
-* Avoid duplicated code.
-* Separate UI interactions from business processes.
-* Store credentials outside of source control.
-* Prefer reusable Page Objects.
-* Prefer reusable Workflows.
-* Validate one feature at a time.
-* Prefer waiting for application readiness over fixed delays.
-* Build small, test often, and commit frequently.
-* Keep Page Objects focused on a single Oracle page or reusable Oracle component.
+The actual client mapping should be maintained outside of GitHub.
 
 ---
 
-# Pull Request Checklist
+## Authentication Configuration Files
 
-Before opening a PR:
+### Responsibilities of the Three Files Under `config/`
 
-- [ ] All affected Playwright tests pass.
-- [ ] Renamed methods have all references updated.
-- [ ] Imports compile without errors.
-- [ ] Documentation updated if architecture changed.
-- [ ] New files are in the correct framework layer.
-- [ ] No client credentials or client names are committed.
-- [ ] Branch is up to date with main.
-- [ ] If the review agent flags an issue, fix the issue and push the correction for the next automated review cycle.
+These files have different responsibilities despite all being related to authentication configuration:
+
+| File | What it does | What a test developer does with it |
+| --- | --- | --- |
+| `config/run-profile.ts` | Reads the `RUN_PROFILE` value from the command, opens the matching `.json` file under `environments/run-profiles/`, validates it, and provides the selected URL, test-data path, and named users. | Add an import statement at the top of a test, then call `requireRunProfile()` inside the test. This is how the test receives the profile selected by the command. |
+| `config/authentication-profile.ts` | Defines the shared TypeScript contract for login information: a URL, username, and password. It does not contain actual values or perform login actions. | Normally, do nothing with this file when writing a test. The loader, workflow, and login Page Object use its definition internally. |
+| `config/environment.ts` | Loads credentials using the older `.env` method when a test has not yet been changed to use `RUN_PROFILE`. This keeps those existing tests working. | Leave it in an older test until that test is updated. Do not add it to a test that uses `requireRunProfile()` unless framework-level fallback behavior is being maintained. |
+
+In TypeScript, **importing** means adding a statement at the top of a file so that code from another file can be used. For this framework, the test adds:
+
+```typescript
+import { requireRunProfile } from "../../../config/run-profile";
+```
+
+The exact number of `../` segments depends on where the test file is located. After that line is added, the test can call:
+
+```typescript
+const runProfile = requireRunProfile();
+```
+
+The preferred path is therefore:
+
+```text
+Test
+  → config/run-profile.ts                 loads and validates the selected profile and user
+  → AuthenticationWorkflow               performs login using those values
+```
+
+`config/authentication-profile.ts` is not an execution step in that path. It provides the shared TypeScript definition used by the files that prepare and use login information.
+
+### How `authentication-profile.ts` Defines the Login Contract
+
+`config/authentication-profile.ts` defines the common TypeScript contract `{ baseUrl, username, password }`. It contains no credentials and executes no code. The loader returns values that satisfy this contract, while the workflow and login Page Object accept the same contract. This prevents those components from developing incompatible ideas about what login information contains.
+
+Actual values travel directly through the runtime path:
+
+```text
+runProfile.user("standardUser")
+        provides URL + username + password
+                    ↓
+AuthenticationWorkflow
+        receives the information
+                    ↓
+FusionLoginPage
+        uses the information to sign in
+```
+
+The credentials do not pass through `authentication-profile.ts`; TypeScript uses its definition while developers write and validate the code.
+
+The compatibility path is:
+
+```text
+Legacy test
+  → config/environment.ts                 loads the older .env configuration
+  → AuthenticationWorkflow(page)          uses those fallback values
+```
+
+`config/authentication-profile.ts` is shared by the framework but is not an alternative configuration path. `config/environment.ts` and `config/run-profile.ts` are alternative ways of sourcing configuration: the first is retained for older tests, and the second is the required choice for new tests.
+
+`FusionLoginPage` still imports `config/environment.ts` because it must support legacy callers that do not pass credentials. When `RUN_PROFILE` is set, `environment.ts` recognizes the run-profile selection and does not require or load the legacy `.env` file. A new test passes `runProfile.user(...)` explicitly, and those explicit values take precedence over the fallback.
+
+The TypeScript entry point used by a run-profile test is:
+
+```text
+config/run-profile.ts
+```
+
+`config/run-profile.ts` exports the `requireRunProfile()` function. When a test calls that function, it reads the PowerShell environment variable named `RUN_PROFILE`, converts its value to lowercase, and verifies that the value is safe to use as a filename. It then adds the `.json` extension and loads the matching file from:
+
+```text
+environments/run-profiles/<run-profile>.json
+```
+
+For example, `RUN_PROFILE=demo-dev` loads `environments/run-profiles/demo-dev.json`.
+
+The contents of that file look like this:
+
+```json
+{
+  "testDataPath": "test-data/clients/demo/dev",
+  "baseUrl": "https://example.oraclecloud.com",
+  "users": {
+    "standardUser": {
+      "username": "example-creator",
+      "password": "example-password"
+    },
+    "glApprover": {
+      "username": "example-approver",
+      "password": "example-approver-password"
+    }
+  }
+}
+```
+
+## Run-Profile Test Startup Walkthrough
+
+Consider this command:
+
+```powershell
+$env:RUN_PROFILE="demo-dev"
+npx playwright test tests/erp/gl/create-journal-save-close.spec.ts `
+  --project=chromium `
+  --headed
+```
+
+The flow is:
+
+1. PowerShell stores the text `demo-dev` in the environment variable `RUN_PROFILE` for the current terminal session.
+2. Playwright starts only `tests/erp/gl/create-journal-save-close.spec.ts` because that exact test file was supplied in the command.
+3. The test imports `requireRunProfile` from `config/run-profile.ts` and calls it:
+
+   ```typescript
+   const runProfile = requireRunProfile();
+   ```
+
+4. `requireRunProfile()` reads `process.env.RUN_PROFILE`. Node exposes the PowerShell value there, so the function receives `demo-dev`. Playwright itself does not choose or interpret the profile name.
+5. `config/run-profile.ts` adds the `.json` extension and constructs this path from the repository working directory:
+
+   ```text
+   <repository>/environments/run-profiles/demo-dev.json
+   ```
+
+6. The loader reads that file and validates its `testDataPath`, `baseUrl`, and `users` object. It returns a `runProfile` object to the test.
+7. The Create Journal test builds its functional-data path by joining the profile's `testDataPath` with the file required by this script:
+
+   ```typescript
+   const dataFilePath = path.join(
+     runProfile.testDataPath,
+     "gl",
+     "create-journal.json",
+   );
+   ```
+
+   If `testDataPath` is `test-data/clients/demo/dev`, the resulting file is:
+
+   ```text
+   <repository>/test-data/clients/demo/dev/gl/create-journal.json
+   ```
+
+8. The run-profile loader does not decide which user a test needs. The test makes that decision by requesting a named role. This Create Journal script contains this call:
+
+   ```typescript
+   runProfile.user("standardUser")
+   ```
+
+   Therefore, this script requires the `standardUser` entry in `demo-dev.json`. If that user is missing, the loader stops with an error that lists the available names.
+9. The test passes the selected authentication values directly into the reusable workflow:
+
+   ```typescript
+   const authentication = new AuthenticationWorkflow(
+     page,
+     runProfile.user("standardUser"),
+   );
+   await authentication.login();
+   ```
+
+   `runProfile.user("standardUser")` returns the profile's shared `baseUrl` plus that user's `username` and `password`. `AuthenticationWorkflow` passes those values to `FusionLoginPage`, which opens the URL, enters the credentials, and waits for the Fusion home page.
+In short, the command selects the profile file, while the TypeScript test selects `standardUser` and `create-journal.json`. The authentication workflow receives the chosen user's URL and credentials as constructor values; it does not search the JSON or guess which user should sign in.
+
+The `users` value is an object keyed by business role so selection never depends on array order. All users in one profile share its `baseUrl`; a user who signs in through another URL belongs in a different run profile.
+
+Real run-profile files are ignored by Git because they currently contain credentials. Only sanitized files ending in `.example.json` may be committed.
+
+## Run-Profile Loading and Validation
+
+`requireRunProfile()` performs the following work once per Playwright worker process:
+
+1. Read and normalize `RUN_PROFILE`.
+2. Reject a missing or unsafe profile name before reading a file.
+3. Resolve the profile from the repository's `environments/run-profiles` directory.
+4. Fail clearly if the file is missing or contains invalid JSON.
+5. Validate non-empty `testDataPath`, `baseUrl`, and `users` values.
+6. Resolve `testDataPath` to an absolute path from the repository working directory.
+7. Cache the validated profile for later calls in that worker.
+
+Tests request credentials by role:
+
+```typescript
+const runProfile = requireRunProfile();
+const creator = runProfile.user("standardUser");
+const approver = runProfile.user("glApprover");
+```
+
+`user(name)` combines the shared `baseUrl` with that user's username and password and returns an authentication profile. If the requested name is absent, the error lists the available user names. A test that only needs `standardUser` does not require `glApprover` to exist.
+
+## Why Users Are Stored by Role Instead of in an Array
+
+All users for one client environment are stored in the same run profile because they share the profile's Fusion URL and functional-data root. This lets one `RUN_PROFILE` value select the complete execution environment without requiring additional terminal variables for individual users.
+
+Within the profile, `users` is a JSON object keyed by business role:
+
+```json
+{
+  "users": {
+    "standardUser": { "username": "...", "password": "..." },
+    "glApprover": { "username": "...", "password": "..." },
+    "readOnlyAuditor": { "username": "...", "password": "..." }
+  }
+}
+```
+
+This structure allows a test to request exactly the role it requires:
+
+```typescript
+runProfile.user("standardUser");
+runProfile.user("glApprover");
+```
+
+An array would make the relationship less direct:
+
+```json
+{
+  "users": [
+    { "role": "standardUser", "username": "...", "password": "..." },
+    { "role": "glApprover", "username": "...", "password": "..." }
+  ]
+}
+```
+
+With an array, the framework would need to search the entries for a matching `role`, validate that roles are not duplicated, and avoid relying on positions such as `users[0]`. Array order could change as users are added or rearranged, while a named property remains stable.
+
+The object therefore gives each role a unique lookup key, makes the required user visible in the test, and produces clearer errors when a role is missing. New roles can be added without changing `RUN_PROFILE`, the command used to start the test, or existing role lookups.
+
+Tests should request only the roles they use. Role names should describe business responsibility rather than a person's name so the same test remains understandable across clients.
+
+## Legacy Authentication and Backward Compatibility
+
+`config/environment.ts` preserves the previous configuration path for legacy tests that do not call `requireRunProfile()` yet.
+
+```text
+Legacy terminal variables
+        → config/environment.ts
+        → legacy .env credential file
+        → AuthenticationWorkflow(page)
+```
+
+This legacy path is separate from the run-profile path. It exists so older tests keep working while the team updates them individually.
+
+- When `RUN_PROFILE` is set, it loads the run profile and exposes its name and `baseUrl`. It does not load a legacy `.env` credential file.
+- When `RUN_PROFILE` is absent, it requires `CLIENT_ALIAS` and `ENVIRONMENT`, loads `environments/.env.<client-alias>.<environment>`, and exposes `ORACLE_BASE_URL`, `ORACLE_USERNAME`, and `ORACLE_PASSWORD` through `env`.
+- `TEST_DATA_ALIAS` remains available to legacy tests through `requireTestDataProfile()` and the compatibility function `requireTestDataAlias()`.
+
+The reusable login components support both paths. Run-profile tests pass credentials explicitly:
+
+```typescript
+const authentication = new AuthenticationWorkflow(
+  page,
+  requireRunProfile().user("standardUser"),
+);
+```
+
+Legacy tests may omit the second constructor argument:
+
+```typescript
+const authentication = new AuthenticationWorkflow(page);
+```
+
+In that case, `FusionLoginPage` falls back to the values exported by `config/environment.ts`. This fallback is why legacy scripts continue to work while tests are converted individually. New and updated tests should pass a named run-profile user explicitly.
+
+Do not set `RUN_PROFILE` and expect legacy `CLIENT_ALIAS`, `ENVIRONMENT`, or `.env` credentials to override it. When `RUN_PROFILE` is present, it is the selected configuration path.
+
+### How to Identify Which Authentication Method a Test Uses
+
+Open the test's `.spec.ts` file and inspect its imports and authentication setup.
+
+A run-profile test imports `requireRunProfile()` and passes a named user to `AuthenticationWorkflow`:
+
+```typescript
+import { requireRunProfile } from "../../../config/run-profile";
+
+const runProfile = requireRunProfile();
+const authentication = new AuthenticationWorkflow(
+  page,
+  runProfile.user("standardUser"),
+);
+```
+
+Its functional-data path also begins with `runProfile.testDataPath`:
+
+```typescript
+const dataFilePath = path.join(
+  runProfile.testDataPath,
+  "gl",
+  "create-journal.json",
+);
+```
+
+A legacy test imports values from `config/environment.ts`, calls `requireTestDataAlias()` or `requireTestDataProfile()`, or creates `new AuthenticationWorkflow(page)` without passing a named authentication profile. Those are the indicators that the older selectors are still required.
+
+## Oracle Fusion Login Readiness
+
+Successful authentication is verified by waiting for the Oracle Fusion home page shell to become available.
+
+The framework validates that the following Oracle Fusion controls are visible:
+
+* Navigator
+* Settings and Actions
+
+This validation confirms that:
+
+* The user is authenticated.
+* Oracle Fusion has finished loading.
+* The Oracle Fusion shell is available.
+* The application is ready for additional automation.
+
+The general rule that readiness methods verify state without performing business actions is documented under [Page Object Design Principles](#page-object-design-principles).
 
 ---
 
-# Future Enhancements
+## Authentication Framework Validation
 
-Potential team-level framework enhancements include:
+The following diagnostic tests validate individual parts of the authentication framework:
 
-- Standardize reusable workflows, shared utilities, and test-data patterns.
-- Define when automation should use Playwright UI, Oracle APIs, or a hybrid approach.
-- Provide a functional-user interface for preparing test data and selecting scripts.
-- Introduce CI/CD, reporting, and safe parallel execution when the framework is ready.
+- `tests/authentication/test-environment.spec.ts` confirms that the selected run profile loads and that `standardUser` can be resolved. It does not contact Oracle Fusion.
+- `tests/authentication/oracle-login.spec.ts` uses the normal `AuthenticationWorkflow` to confirm that Oracle Fusion accepts the selected `standardUser` credentials.
+- `tests/config/environment-selection.spec.ts` confirms that the legacy environment selectors still work when `RUN_PROFILE` is not set.
+
+These tests do not initialize the framework, create authentication state for business tests, or need to run before a business test. They are troubleshooting tools for confirming configuration selection, login behavior, and backward compatibility independently.
+
+Keep future framework validation tests near the component or functional area they validate rather than placing every validation in a generic framework folder.
+
+---
+
+# Root Playwright Configuration
+
+Playwright expects `playwright.config.ts` in the project root. Keeping it there allows standard commands to work without an additional configuration argument:
+
+```powershell
+npx playwright test <test-path>
+npx playwright test <test-path> --ui
+npx playwright show-report
+npx playwright codegen
+```
+
+These examples show that Playwright discovers the root configuration automatically. Select the appropriate run-profile or legacy configuration before starting a test, and check the functional guide before running a data-changing business script.
+
+---
+
+# TypeScript Configuration
+
+The root `tsconfig.json` provides shared editor settings for the Playwright and Node.js TypeScript code.
+
+It currently enables Node type information and identifies the project folders that TypeScript should inspect. This supports consistent editor validation for imports such as `node:fs` and `node:path`.
+
+Playwright continues to control test execution. Command-line type checking and CI enforcement are not currently configured.
+
+---
+
+# Legacy Environment Variables
+
+Run-profile tests use only `RUN_PROFILE`, as described in the Authentication Framework section. The following variables exist only for tests that still use the legacy configuration path:
+
+| Variable | Set in | Legacy purpose |
+| --- | --- | --- |
+| `TEST_DATA_ALIAS` | Terminal | Selects the client functional-data folder. |
+| `ENVIRONMENT` | Terminal | Selects the environment segment. |
+| `CLIENT_ALIAS` | Terminal | Selects the matching `.env` credential file. |
+| `ORACLE_BASE_URL` | Legacy `.env` file | Provides the fallback Fusion URL. |
+| `ORACLE_USERNAME` | Legacy `.env` file | Provides the fallback username. |
+| `ORACLE_PASSWORD` | Legacy `.env` file | Provides the fallback password. |
+
+Functional values such as ledgers, accounting periods, journal names, and safety flags belong in module JSON files below the selected functional-data root—not in environment variables or credential files.
+
+---
+
+# Protecting Private Configuration and Test Data
+
+Real credentials, client test data, and generated output must remain outside source control. The Git-ignore rules allow only explicitly sanitized examples in these areas:
+
+| Area | Ignored private pattern or example | Tracked example or exception |
+| --- | --- | --- |
+| Legacy credentials | `environments/.env.*` | `environments/.env.example` |
+| Run profiles | `environments/run-profiles/*.json` | `environments/run-profiles/*.example.json` |
+| Client test data | `test-data/**` | Sanitized files matching `*.example.*` or `example.*` |
+| Generated output | `output/**` | Sanitized files matching `*.example.*` or `example.*`; explicitly retained proof-of-concept fixtures are noted below. |
+
+Examples of private files that must not be committed include:
+
+```text
+environments/.env.demo.dev
+environments/run-profiles/demo-dev.json
+test-data/clients/demo/dev/gl/create-journal.json
+test-data/clients/demo/dev/gl/supporting-document.pdf
+```
+
+Before committing a new example, confirm that it contains no real client name, URL, username, password, or client-specific business data.
+
+`output/python-output.json` and `output/demo/example.ap_inv_INV-10012_log.json` are intentionally tracked fixtures from Taylor Wood's separate development work. They contain no sensitive data the team needs to protect. Further documentation for those fixtures belongs with that work.
+
+---
+
+# Functional Test Data: Create Journal Example
+
+Create Journal tests using the current configuration load input data from the `testDataPath` in the active run profile.
+
+```text
+RUN_PROFILE
+    ↓
+Private run-profile JSON
+    ├── baseUrl + named user credentials
+    └── testDataPath
+             ↓
+Environment-specific functional JSON
+            ↓
+Create Journal data loader
+            ↓
+Validated TypeScript data
+            ↓
+Playwright test
+            ↓
+Create Journal Page Object
+```
+
+Runtime data follows this convention:
+
+```text
+<run-profile testDataPath>/gl/create-journal.json
+```
+
+Sanitized examples are stored under:
+
+```text
+test-data/examples/gl/
+```
+
+The test resolves and loads the data file. The data loader validates the contents and returns typed journal data. The Page Object receives the validated values and remains independent of the JSON file structure.
+
+Current validation includes:
+
+- Required fields must contain values.
+- At least two journal lines are required.
+- Each line must contain either a debit or a credit, but not both.
+- Journal amounts must be positive numbers.
+- Total debits must equal total credits.
+- The configured attachment file must exist.
+
+Real environment-specific data remains excluded from source control.
+
+---

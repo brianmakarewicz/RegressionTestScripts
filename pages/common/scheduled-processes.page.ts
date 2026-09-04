@@ -80,6 +80,20 @@ export class ScheduledProcessesPage {
     processName: string,
     processId: string,
   ): Promise<void> {
+    await this.waitForProcessToReachAcceptedStatus(processName, processId, [
+      "Succeeded",
+    ]);
+  }
+
+  async waitForProcessToReachAcceptedStatus(
+    processName: string,
+    processId: string,
+    acceptedStatuses: readonly string[],
+  ): Promise<void> {
+    if (acceptedStatuses.length === 0) {
+      throw new Error("At least one accepted process status is required");
+    }
+
     await expect
       .poll(
         async () => {
@@ -92,11 +106,13 @@ export class ScheduledProcessesPage {
             const hasExpectedName = await resultRow
               .getByText(processName, { exact: true })
               .isVisible();
-            const hasSucceededStatus = await resultRow
-              .getByText("Succeeded", { exact: true })
-              .isVisible();
+            const acceptedStatusVisibility = await Promise.all(
+              acceptedStatuses.map((status) =>
+                resultRow.getByText(status, { exact: true }).isVisible(),
+              ),
+            );
 
-            if (hasExpectedName && hasSucceededStatus) {
+            if (hasExpectedName && acceptedStatusVisibility.some(Boolean)) {
               return true;
             }
           }
@@ -105,7 +121,9 @@ export class ScheduledProcessesPage {
           return false;
         },
         {
-          message: `Expected ${processName} process ${processId} to succeed`,
+          message:
+            `Expected ${processName} process ${processId} to reach one of: ` +
+            acceptedStatuses.join(", "),
           timeout: 180_000,
           intervals: [5_000, 10_000],
         },
@@ -121,9 +139,17 @@ export class ScheduledProcessesPage {
     await expect(
       resultRow.getByText(processId, { exact: true }),
     ).toBeVisible();
-    await expect(
-      resultRow.getByText("Succeeded", { exact: true }),
-    ).toBeVisible();
+
+    const acceptedStatusVisibility = await Promise.all(
+      acceptedStatuses.map((status) =>
+        resultRow.getByText(status, { exact: true }).isVisible(),
+      ),
+    );
+
+    expect(
+      acceptedStatusVisibility.some(Boolean),
+      `Expected process ${processId} to have an accepted status: ${acceptedStatuses.join(", ")}`,
+    ).toBe(true);
   }
 
   private async openProcessDetails(
