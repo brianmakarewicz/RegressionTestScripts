@@ -18,19 +18,9 @@ test("user can open Worklist for the configured vacation-rule user", async ({
     "gl",
     "validate-setup-vacation-rule.json",
   );
-
-  /* const vacationRuleDataFilePath = path.join(
-    "test-data",
-    "clients",
-    env.clientAlias,
-    env.environment,
-    "gl",
-    "validate-setup-vacation-rule.json",
-  );*/
   const vacationRuleData = loadVacationRuleData(vacationRuleDataFilePath);
 
   // Authenticate through the shared workflow used by Fusion UI tests.
-  //const authentication = new AuthenticationWorkflow(page);
   const authentication = new AuthenticationWorkflow(
     page,
     runProfile.user("standardUser"),
