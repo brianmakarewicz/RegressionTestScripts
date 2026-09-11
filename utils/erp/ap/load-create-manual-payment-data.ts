@@ -3,7 +3,7 @@ import path from "node:path";
 
 import {
   type CreateManualPaymentData,
-} from "../../types/erp/ap/create-manual-payment-data";
+} from "../../../types/erp/ap/create-manual-payment-data";
 
 export function loadCreateManualPaymentData(
   dataFilePath: string,
@@ -52,13 +52,13 @@ function validateCreateManualPaymentData(
   const requiredFields: Array<
     keyof Omit<
       CreateManualPaymentData,
-      "paymentDocument" | "invoices"
+      "paymentDocument" | "invoices" | "supplierSite"
     >
   > = [
     "businessUnit",
     "supplier",
-    "supplierSite",
     "description",
+    "paymentDate",
     "disbursementBankAccount",
     "paymentMethod",
     "paymentProcessProfile",
@@ -80,6 +80,17 @@ function validateCreateManualPaymentData(
         `Required manual-payment field is missing: ${field}`,
       );
     }
+  }
+
+  // Supplier Site can be null when Oracle does not require a site.
+  if (
+    data.supplierSite !== null
+    && (
+      typeof data.supplierSite !== "string"
+      || data.supplierSite.trim() === ""
+    )
+  ) {
+    throw new Error("supplierSite must be a non-empty string or null.");
   }
 
   /*

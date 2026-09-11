@@ -1,3 +1,4 @@
+import { requireRunProfile } from "../../../config/run-profile";
 import { expect, Locator, Page, test } from '@playwright/test';
 import { AuthenticationWorkflow } from '../../../workflows/authentication.workflow';
 import { FusionNavigatorPage } from '../../../pages/common/fusion-navigator.page';
@@ -10,9 +11,13 @@ const QUANTITY = requiredEnv('QUANTITY');
 const USER_INPUT_TIMEOUT_MS = 5 * 60 * 1_000;
 
 test('Receive PO and verify invoice system hold is released', async ({ page }) => {
+  const runProfile = requireRunProfile();
   test.setTimeout(15 * 60 * 1_000);
 
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
 
   await authentication.login();

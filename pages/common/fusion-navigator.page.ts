@@ -373,4 +373,42 @@ export class FusionNavigatorPage {
     await this.page.locator('div').filter({ hasText: PONumber }).nth(3).click();
     await this.page.waitForTimeout(3 * 1000);
   }
+
+  /**
+   * Opens the Payments workspace from Payables in the Navigator.
+   */
+  async goToPaymentsPage(): Promise<void> {
+    await this.page.getByRole("link", { name: "Navigator" }).click();
+    await this.page.getByTitle("Payables", { exact: true }).click();
+    await this.page.getByRole("link", { name: "Payments", exact: true }).click();
+    await expect(
+      this.page.getByText("Payment Process Requests", { exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+
+
+  }
+
+  /**
+   * Opens Create Payment from the Payments workspace task list.
+   */
+  async goToCreatePaymentPage(): Promise<void> {
+    await this.goToPaymentsPage();
+    await this.page.getByRole("link", { name: "Tasks" }).click();
+    await this.page.getByRole('link', { name: 'Create Payment', exact: true }).click();
+    await expect(
+      this.page.getByRole('heading', { name: 'Create Payment' }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
+   * Opens Manage Payments from the Payments workspace task list.
+   */
+  async goToManagePaymentsPage(): Promise<void> {
+    await this.goToPaymentsPage();
+    await this.page.getByRole("link", { name: "Tasks" }).click();
+    await this.page.getByRole('link', { name: 'Manage Payments', exact: true }).click();
+    await expect(
+      this.page.getByRole('heading', { name: 'Search' }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
 }

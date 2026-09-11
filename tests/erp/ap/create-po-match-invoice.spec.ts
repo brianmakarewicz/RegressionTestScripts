@@ -1,29 +1,30 @@
 import path from "node:path";
 import { expect, Locator, Page, test } from '@playwright/test';
-import { env } from "../../../config/environment";
+import { requireRunProfile } from "../../../config/run-profile";
 import { AuthenticationWorkflow } from '../../../workflows/authentication.workflow';
 import { FusionNavigatorPage } from '../../../pages/common/fusion-navigator.page';
-import { loadCreatePOInvData } from "../../../utils/test-data/load-create-po-inv-data.ts";
+import { loadCreatePOInvData } from "../../../utils/erp/ap/load-create-po-inv-data";
 
 const PREFIX = requiredEnv('PREFIX');
 
 const USER_INPUT_TIMEOUT_MS = 5 * 60 * 1_000;
 
 test('Create PO match invoice', async ({ page }) => {
+  const runProfile = requireRunProfile();
   test.setTimeout(15 * 60 * 1_000);
 
-    const dataFilePath = path.join(
-    "test-data",
-    "clients",
-    env.clientAlias,
-    env.environment,
+  const dataFilePath = path.join(
+    runProfile.testDataPath,
     "ap",
     "po_match_inv.json",
   );
   const invData = loadCreatePOInvData(dataFilePath);
   const invNumber = `${PREFIX}${invData.invNumber}`;
 
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const navigatorPage = new FusionNavigatorPage(page);
 
   await authentication.login();

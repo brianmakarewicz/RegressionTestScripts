@@ -1,17 +1,16 @@
 import path from "node:path";
-import { expect, Locator, Page, test } from "@playwright/test";
-import { env } from "../../../config/environment";
+import { errors, expect, Locator, Page, test } from "@playwright/test";
+import { requireRunProfile } from "../../../config/run-profile";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
+import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 import { loadCreateManualPaymentData } from "../../../utils/test-data/load-create-manual-payment-data";
 
-test("AP-07 Create Manual Payment", async ({ page }) => {
+test("Create Manual Payment", async ({ page }) => {
+  const runProfile = requireRunProfile();
   test.setTimeout(15 * 60 * 1_000);
 
   const dataFilePath = path.join(
-    "test-data",
-    "clients",
-    env.clientAlias,
-    env.environment,
+    runProfile.testDataPath,
     "ap",
     "manual_payment.json",
   );
@@ -22,7 +21,12 @@ test("AP-07 Create Manual Payment", async ({ page }) => {
   // It is stored here and reused later when searching Manage Payments.
   let paymentNumber = "";
 
-  const authentication = new AuthenticationWorkflow(page);
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
+
+  const navigatorPage = new FusionNavigatorPage(page);
 
   await authentication.login();
 
@@ -33,13 +37,7 @@ test("AP-07 Create Manual Payment", async ({ page }) => {
    * ==========================================================
    */
 
-  await goToPayments(page);
-
-  await page.getByText("Tasks", { exact: true }).click();
-
-  await page
-    .getByText("Create Payment", { exact: true })
-    .click();
+  await navigatorPage.goToCreatePaymentPage();
 
   /*
    * ==========================================================
@@ -60,17 +58,20 @@ test("AP-07 Create Manual Payment", async ({ page }) => {
     paymentData.supplier,
   );
 
-  await fillCombobox(
-    page,
-    "Supplier Site",
-    paymentData.supplierSite,
-  );
+  await fillSupplierSiteIfAvailable(page, paymentData.supplierSite);
 
   await page
     .getByRole("textbox", {
       name: "Description",
     })
     .fill(paymentData.description);
+
+  const paymentDateInput = page.getByRole("textbox", {
+    name: "Payment Date",
+    exact: true,
+  });
+  await paymentDateInput.fill(paymentData.paymentDate);
+  await paymentDateInput.press("Tab");
 
   await fillCombobox(
     page,
@@ -298,7 +299,7 @@ test("AP-07 Create Manual Payment", async ({ page }) => {
    * ==========================================================
    */
 
-  await goToHome(page);
+  await navigatorPage.goToHomePage();
 
   /*
    * ==========================================================
@@ -306,25 +307,7 @@ test("AP-07 Create Manual Payment", async ({ page }) => {
    * ==========================================================
    */
 
-  await goToPayments(page);
-
-  await page
-    .getByText(
-      "Tasks",
-      {
-        exact: true,
-      },
-    )
-    .click();
-
-  await page
-    .getByText(
-      "Manage Payments",
-      {
-        exact: true,
-      },
-    )
-    .click();
+  await navigatorPage.goToManagePaymentsPage();
 
   /*
    * ==========================================================
@@ -512,86 +495,6 @@ test("AP-07 Create Manual Payment", async ({ page }) => {
  * ============================================================
  */
 
-async function goToPayments(
-  page: Page,
-): Promise<void> {
-
-  const payables =
-    page.getByText(
-      "Payables",
-      {
-        exact: true,
-      },
-    );
-
-  if (
-    await payables
-      .isVisible()
-      .catch(() => false)
-  ) {
-    await payables.click();
-  }
-
-  await clickVisible(
-    page,
-    [
-      page.getByRole(
-        "link",
-        {
-          name: "Payments",
-          exact: true,
-        },
-      ),
-
-      page.getByText(
-        "Payments",
-        {
-          exact: true,
-        },
-      ),
-    ],
-    "Payments",
-  );
-}
-
-
-/*
- * ============================================================
- * GO HOME
- * ============================================================
- */
-
-async function goToHome(
-  page: Page,
-): Promise<void> {
-
-  await clickVisible(
-    page,
-    [
-      page
-        .getByRole(
-          "link",
-          {
-            name: "Home",
-            exact: true,
-          },
-        )
-        .first(),
-
-      page
-        .getByText(
-          "Home",
-          {
-            exact: true,
-          },
-        )
-        .first(),
-    ],
-    "Home",
-  );
-}
-
-
 /*
  * ============================================================
  * OPEN SELECT AND ADD INVOICES
@@ -651,6 +554,35 @@ async function openSelectAndAddInvoices(
  * FILL ORACLE COMBOBOX
  * ============================================================
  */
+
+// Fill Supplier Site only when a value is supplied and Oracle displays the field.
+async function fillSupplierSiteIfAvailable(
+  page: Page,
+  supplierSite: string | null,
+): Promise<void> {
+  if (supplierSite === null) {
+    return;
+  }
+
+  const field = page
+    .getByRole("combobox", { name: "Supplier Site", exact: true })
+    .or(page.getByRole("textbox", { name: "Supplier Site", exact: true }))
+    .or(page.getByLabel("Supplier Site", { exact: true }))
+    .filter({ visible: true })
+    .first();
+
+  try {
+    await field.waitFor({ state: "visible", timeout: 5_000 });
+  } catch (error) {
+    if (error instanceof errors.TimeoutError) {
+      return;
+    }
+    throw error;
+  }
+
+  await field.fill(supplierSite);
+  await field.press("Enter");
+}
 
 async function fillCombobox(
   page: Page,

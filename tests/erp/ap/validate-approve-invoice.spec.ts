@@ -1,3 +1,4 @@
+import { requireRunProfile } from "../../../config/run-profile";
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import { AuthenticationWorkflow } from '../../../workflows/authentication.workflow';
@@ -27,7 +28,11 @@ function readCreatedInvoice(): CreatedInvoice {
 }
 
 test('navigate to created invoice in Oracle Fusion', async ({ page }) => {
-  const authentication = new AuthenticationWorkflow(page);
+  const runProfile = requireRunProfile();
+  const authentication = new AuthenticationWorkflow(
+    page,
+    runProfile.user("standardUser"),
+  );
   const createdInvoice = readCreatedInvoice();
   const navigatorPage = new FusionNavigatorPage(page);
 
