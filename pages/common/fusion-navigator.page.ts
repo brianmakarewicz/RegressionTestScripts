@@ -330,6 +330,8 @@ export class FusionNavigatorPage {
     await this.page.waitForLoadState("domcontentloaded");
   }
 
+
+  //Navigate to manage invoice, search an invoice number, open the invoice
   async goToAPInvoice(invoiceNumber: string) {
     await this.page.getByRole("link", { name: "Navigator" }).click();
     await this.page.getByTitle("Payables", { exact: true }).click();
@@ -347,5 +349,28 @@ export class FusionNavigatorPage {
     await expect(
       this.page.getByRole("heading", { name: "Invoice Details" }),
     ).toBeVisible({ timeout: 30_000 });
+  }
+
+  //Navigate to create invoice page
+    async goToCreateAPInvoice() {
+    await this.page.getByRole("link", { name: "Navigator" }).click();
+    await this.page.getByTitle("Payables", { exact: true }).click();
+    await this.page.getByRole("link", { name: "Invoices" }).click();
+    await this.page.getByRole("link", { name: "Tasks" }).click();
+    await this.page.getByRole('link', { name: 'Create Invoice', exact: true }).click();
+    await expect(
+      this.page.getByRole('heading', { name: 'Invoice Header' }),
+    ).toBeVisible({ timeout: 30_000 });
+
+  }
+
+  //Navigate to my receipts page, search for PO number (redwood page))
+    async goToReceipt(PONumber: string) {
+    await this.page.getByRole('link', { name: 'Navigator' }).click();
+    await this.page.getByTitle('Procurement', { exact: true }).click();
+    await this.page.getByRole('link', { name: 'My Receipts' }).click();
+    await this.page.locator('#smart-search-component-search-bar').getByRole('combobox').fill(PONumber);
+    await this.page.locator('div').filter({ hasText: PONumber }).nth(3).click();
+    await this.page.waitForTimeout(3 * 1000);
   }
 }
