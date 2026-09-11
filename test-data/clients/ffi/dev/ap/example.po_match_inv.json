@@ -1,0 +1,19 @@
+{
+  "poNumber": "3003583",
+  "invNumber": "RT_INV_PO",
+  "amount": 216.00,
+  "description": "Test AP Invoice",
+  "invDate": "02/01/2026",
+  "requester": "Support, Creoal",
+  "lines": [
+    {
+      "poLineNumber": "2",
+      "quantity": "1",
+      "trackAsAsset": "N",
+      "serialNumber": null,
+      "assetCatMajor": null,
+      "assetCatMinor": null,
+      "lineType": null
+    }
+  ]
+}

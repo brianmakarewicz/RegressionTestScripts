@@ -1,0 +1,15 @@
+{
+  "businessUnit": "Fortinet Federal",
+  "supplier": "ENTER_SUPPLIER",
+  "supplierSite": "ENTER_SUPPLIER_SITE",
+  "description": "Manual payment test",
+  "disbursementBankAccount": "WF Operating",
+  "paymentMethod": "Electronic (ACH)",
+  "paymentProcessProfile": "FFI WF ACH Payment System Account FFI WF ACH Payment",
+  "paymentDocument": "FFI Payment Document for Electronic",
+  "invoices": [
+    {
+      "invoiceNumber": "ENTER_INVOICE_NUMBER"
+    }
+  ]
+}
