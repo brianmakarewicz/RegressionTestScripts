@@ -1,49 +1,35 @@
 import { requireRunProfile } from "../../../config/run-profile";
 import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
 import { AuthenticationWorkflow } from '../../../workflows/authentication.workflow';
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
 
 
-type CreatedInvoice = {
-  invoiceNumber: string;
-  invoiceId?: string;
-};
-
-
-function readCreatedInvoice(): CreatedInvoice {
-  const filePath = process.env.INVOICE_OUTPUT_FILE;
-
-  if (!filePath) {
-    throw new Error('Missing INVOICE_OUTPUT_FILE. The Python script must pass the output file path when it calls Playwright.');
-  }
-
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`Invoice output file not found: ${filePath}`);
-  }
-
-  console.log(`Reading invoice output file: ${filePath}`);
-
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8')) as CreatedInvoice;
-}
-
 test('navigate to created invoice in Oracle Fusion', async ({ page }) => {
+  test.setTimeout(180_000);
+  const invoiceNumber = process.env.INVOICE_NUMBER?.trim();
+  if (!invoiceNumber) {
+    throw new Error('INVOICE_NUMBER is required. Set $env:INVOICE_NUMBER before running this test.');
+  }
+
   const runProfile = requireRunProfile();
   const authentication = new AuthenticationWorkflow(
     page,
     runProfile.user("standardUser"),
   );
-  const createdInvoice = readCreatedInvoice();
   const navigatorPage = new FusionNavigatorPage(page);
 
   await authentication.login();
-  await navigatorPage.goToAPInvoice(createdInvoice.invoiceNumber);
+  await navigatorPage.goToAPInvoice(invoiceNumber);
 
   await page.getByRole('link', { name: 'Actions', exact: true }).click();
   await page.getByText('Validate', { exact: true }).click();
   await expect(page.locator('td').filter({ hasText: /^Validated$/ }).first()).toBeVisible();
   await page.getByRole('link', { name: 'Actions', exact: true }).click();
   await page.getByText('Approval', { exact: true }).click();
-  await page.getByText('Initiate').nth(1).click();
+  // Target the visible approval menu cell rather than a positional text match.
+  const initiateApproval = page.locator('td.xo2')
+    .filter({ hasText: /^Initiate$/ })
+    .filter({ visible: true });
+  await initiateApproval.click({ timeout: 30_000 });
 
 });

@@ -345,7 +345,7 @@ export class FusionNavigatorPage {
     await this.page
       .getByRole("button", { name: "Search", exact: true })
       .click();
-    await this.page.getByRole("link", { name: invoiceNumber }).click();
+    await this.page.getByRole("link", { name: invoiceNumber, exact: true }).click();
     await expect(
       this.page.getByRole("heading", { name: "Invoice Details" }),
     ).toBeVisible({ timeout: 30_000 });
