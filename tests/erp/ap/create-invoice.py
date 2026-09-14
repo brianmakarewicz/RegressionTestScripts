@@ -4,17 +4,11 @@ import json
 import os
 import re
 from pathlib import Path
-from datetime import datetime
-import subprocess
 
 import requests
-from dotenv import load_dotenv
-
-#timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
 ROOT = Path(__file__).resolve().parents[3]
 CSV_PATTERN = "ap_inv*.csv"
-# OUTPUT_PATH = ROOT / "output" / f"{timestamp}_create_invoice_log.json"
 
 
 
@@ -24,15 +18,46 @@ def required_env(name: str) -> str:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value
 
-def get_env_path() -> Path:
-    client_alias = required_env("CLIENT_ALIAS")
-    environment = required_env("ENVIRONMENT")
+def load_run_profile() -> dict:
+    name = required_env("RUN_PROFILE").strip().lower()
+    if not re.fullmatch(r"[a-z0-9_-]+", name):
+        raise RuntimeError(f"Invalid run profile name: {name}")
 
-    return ROOT / "environments" / f".env.{client_alias}.{environment}"
+    profile_path = ROOT / "environments" / "run-profiles" / f"{name}.json"
+    if not profile_path.is_file():
+        raise RuntimeError(f"Run profile not found: {profile_path}")
+    try:
+        profile = json.loads(profile_path.read_text(encoding="utf-8-sig"))
+    except ValueError as error:
+        raise RuntimeError(f"Run profile is not valid JSON: {profile_path}") from error
+    if not isinstance(profile, dict):
+        raise RuntimeError("Run profile must contain a JSON object")
 
-def get_csv_folder() -> Path:
-    client_alias = required_env("CLIENT_ALIAS")
-    return ROOT / "test-data" / client_alias
+    def require_text(data: dict, key: str) -> str:
+        value = data.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise RuntimeError(f"Run profile field '{key}' is required: {profile_path}")
+        return value.strip()
+
+    data_path = (ROOT / require_text(profile, "testDataPath")).resolve()
+    try:
+        relative_data_path = data_path.relative_to((ROOT / "test-data").resolve())
+    except ValueError as error:
+        raise RuntimeError("Invoice testDataPath must be inside the repository test-data folder") from error
+    users = profile.get("users")
+    user = users.get("standardUser") if isinstance(users, dict) else None
+    if not isinstance(user, dict):
+        raise RuntimeError("Run profile user 'standardUser' is required")
+
+    return {
+        "name": name,
+        "baseUrl": require_text(profile, "baseUrl"),
+        "username": require_text(user, "username"),
+        "password": require_text(user, "password"),
+        "csvFolder": data_path / "ap",
+        "outputFolder": ROOT / "output" / relative_data_path / "ap",
+    }
+
 
 def optional(value: str | None) -> str | None:
     value = (value or "").strip()
@@ -77,9 +102,9 @@ def readable_response_text(response_text: str) -> str:
     return readable
 
 
-def find_invoice_csv() -> Path:
-    csv_folder = get_csv_folder()
-    matches = sorted(csv_folder.glob(CSV_PATTERN))
+def find_invoice_csv(profile: dict) -> Path:
+    csv_folder = profile["csvFolder"]
+    matches = sorted(match for match in csv_folder.glob(CSV_PATTERN) if match.is_file())
 
     if not matches:
         raise RuntimeError(f"No CSV files found matching {csv_folder / CSV_PATTERN}")
@@ -92,10 +117,9 @@ def find_invoice_csv() -> Path:
 
     return matches[0]
 
-def read_invoice_rows() -> tuple[Path, list[dict[str, str]]]:
-    client_alias = required_env("CLIENT_ALIAS")
-    csv_path = find_invoice_csv()
-    output_path = ROOT / "output" / client_alias / f"{csv_path.stem}_log.json"
+def read_invoice_rows(profile: dict) -> tuple[Path, Path, list[dict[str, str]]]:
+    csv_path = find_invoice_csv(profile)
+    output_path = profile["outputFolder"] / f"{csv_path.stem}_log.json"
 
     print(f"Reading invoice CSV: {csv_path}")
     #print(f"Output log file: {output_path}")
@@ -145,8 +169,8 @@ def build_invoice_payload(row: dict[str, str]) -> dict:
     }
 
 
-def create_invoice(payload: dict) -> dict:
-    base_url = required_env("ORACLE_BASE_URL").rstrip("/")
+def create_invoice(payload: dict, profile: dict) -> dict:
+    base_url = profile["baseUrl"].rstrip("/")
     api_path = os.getenv(
         "ORACLE_INVOICE_API_PATH",
         "/fscmRestApi/resources/11.13.18.05/invoices",
@@ -155,7 +179,7 @@ def create_invoice(payload: dict) -> dict:
 
     response = requests.post(
         url,
-        auth=(required_env("ORACLE_USERNAME"), required_env("ORACLE_PASSWORD")),
+        auth=(profile["username"], profile["password"]),
         headers={
             "Accept": "application/json",
             "Content-Type": "application/vnd.oracle.adf.resourceitem+json",
@@ -219,27 +243,15 @@ def create_invoice(payload: dict) -> dict:
 
 
 def main() -> None:
-    env_path = get_env_path()
-
-    if not env_path.exists():
-        raise RuntimeError(f"Environment file not found: {env_path}")
-
-    load_dotenv(env_path)
-
-    client_alias = required_env("CLIENT_ALIAS")
-    environment = required_env("ENVIRONMENT")
-    print(f"Environment: {client_alias}/{environment}")
-
-    csv_path = find_invoice_csv()
-    output_path = ROOT / "output" / client_alias / f"{csv_path.stem}_log.json"
-
-    csv_path, output_path, rows = read_invoice_rows()
+    profile = load_run_profile()
+    print(f"Run profile: {profile['name']}")
+    csv_path, output_path, rows = read_invoice_rows(profile)
 
     if not rows:
         raise RuntimeError(f"No invoice rows found in {csv_path}")
 
     payload = build_invoice_payload(rows[0])
-    response_result = create_invoice(payload)
+    response_result = create_invoice(payload, profile)
 
     api_response = response_result.get("apiResponse")
 
@@ -257,8 +269,7 @@ def main() -> None:
     write_output_file(output_path,
         {
             "success": response_result["success"],
-            "clientAlias": client_alias,
-            "environment": environment,
+            "runProfile": profile["name"],
             "invoiceNumber": invoice_number,
             "invoiceId": invoice_id,
             "request": payload,
@@ -274,17 +285,9 @@ def main() -> None:
 
     if response_result["success"]:
         print(f"Created invoice {invoice_number}")
-        print(f'***Run the following command prior to calling the playwright script:')
-        print(f'$env:INVOICE_OUTPUT_FILE = "{output_path}"')
+        print(f'***Run the following command prior to calling the validation script:')
+        print(f'$env:INVOICE_NUMBER="{invoice_number}"')
 
-        env = os.environ.copy()
-        env["INVOICE_OUTPUT_FILE"] = str(output_path)
-
-        # subprocess.run(
-        #     ["npx", "playwright", "test", "tests/erp/ap/validate-approve-invoice.spec.ts", "--headed", "--chromium"],
-        #     check=True,
-        #     env=env
-        # )
     else:
         print(f"Invoice was not created: {response_result['message']}")
 
