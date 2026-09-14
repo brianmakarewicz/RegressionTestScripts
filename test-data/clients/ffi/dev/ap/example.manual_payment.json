@@ -2,6 +2,7 @@
   "businessUnit": "Fortinet Federal",
   "supplier": "ENTER_SUPPLIER",
   "supplierSite": "ENTER_SUPPLIER_SITE",
+  "paymentDate": "09/11/26",
   "description": "Manual payment test",
   "disbursementBankAccount": "WF Operating",
   "paymentMethod": "Electronic (ACH)",
