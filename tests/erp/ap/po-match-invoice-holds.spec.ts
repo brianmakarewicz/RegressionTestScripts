@@ -82,9 +82,33 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
   await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).fill(QUANTITY);
   await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).press('Tab');
   await page.getByRole('button', { name: 'Submit' }).click();
-  await page.getByText('Creating receipt', { exact: true }).click();
-  await page.locator('[id="_oj204_mc"]').getByText(/^Receipt .+ created$/);
-  //await page.locator('[id="_oj204_mc"]').getByText('Receipt 40006224 created').click();
+  // Return to My Receipts after submitting the receipt.
+  await page
+    .locator('#in-app-navigation_navItem_my-receipts a')
+    .filter({ hasText: /^My Receipts$/ })
+    .click({ timeout: 60_000 });
+
+  await test.step('Confirm the matching item was received today', async () => {
+    const itemDescription = page.locator('a.oj-link-standalone').filter({
+      hasText: new RegExp(`^\\s*${escapeRegExp(ITEM_NUMBER)}(?:\\s|$)`),
+    });
+
+    // Scope to the item's nearest card containing the receipt-date slot.
+    const receiptRow = itemDescription
+      .locator('xpath=ancestor::*[.//div[@slot="quaternary"]][1]')
+      .filter({ visible: true });
+
+    await expect
+      .poll(() => receiptRow.count(), { timeout: 60_000 })
+      .toBeGreaterThanOrEqual(1);
+
+    // Multiple receipts may match the item; at least one must be received today.
+    const receivedToday = receiptRow
+      .locator('div[slot="quaternary"]')
+      .filter({ hasText: /^\s*Received today\s*$/i })
+      .filter({ visible: true });
+    await expect(receivedToday.first()).toBeVisible({ timeout: 60_000 });
+  });
 
   await navigatorPage.goToHomePage();
 
