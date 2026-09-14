@@ -3,7 +3,7 @@ import path from "node:path";
 import {
   type CreateApInvData,
   type CreateApInvLineData,
-} from "../../types/erp/ap/create-po-inv-data.ts";
+} from "../../../types/erp/ap/create-po-inv-data";
 
 /**
  * Reads an AP invoice JSON file, validates the required fields,
