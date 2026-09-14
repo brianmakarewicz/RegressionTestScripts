@@ -3,7 +3,7 @@ import { errors, expect, Locator, Page, test } from "@playwright/test";
 import { requireRunProfile } from "../../../config/run-profile";
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 import { FusionNavigatorPage } from "../../../pages/common/fusion-navigator.page";
-import { loadCreateManualPaymentData } from "../../../utils/test-data/load-create-manual-payment-data";
+import { loadCreateManualPaymentData } from "../../../utils/erp/ap/load-create-manual-payment-data";
 
 test("Create Manual Payment", async ({ page }) => {
   const runProfile = requireRunProfile();
