@@ -59,7 +59,7 @@ export function loadCreatePOInvData(jsonFilePath: string): CreateApInvData {
         serialNumber: getOptionalString(line, "serialNumber"),
         assetCatMajor: getOptionalString(line, "assetCatMajor"),
         assetCatMinor: getOptionalString(line, "assetCatMinor"),
-        lineType: getOptionalString(line, "assetCatMinor"),
+        lineType: getOptionalString(line, "lineType"),
       };
     },
   );
