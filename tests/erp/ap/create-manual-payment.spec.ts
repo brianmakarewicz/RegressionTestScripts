@@ -171,12 +171,8 @@ test("Create Manual Payment", async ({ page }) => {
 
     await expect(row).toHaveCount(1);
 
-    const checkbox =
-      row.getByRole("checkbox");
-
-    if (!(await checkbox.isChecked())) {
-      await checkbox.check();
-    }
+    // Select the invoice by clicking its matching search-result row.
+    await row.click();
 
     /*
      * Apply adds the selected invoice while
@@ -252,27 +248,11 @@ test("Create Manual Payment", async ({ page }) => {
     `Created payment number: ${paymentNumber}`,
   );
 
-  /*
-   * Close the payment confirmation dialog
-   * if Oracle displays one.
-   */
-
-  const okButton =
-    page.getByRole(
-      "button",
-      {
-        name: "OK",
-        exact: true,
-      },
-    );
-
-  if (
-    await okButton
-      .isVisible()
-      .catch(() => false)
-  ) {
-    await okButton.click();
-  }
+  // Dismiss the confirmation only after capturing the payment number.
+  await page.locator('[id="_FOd1::msgDlg::cancel"]').click();
+  await expect(
+    page.locator('[id="_FOd1::msgDlg::_cnt"]'),
+  ).toBeHidden({ timeout: 30_000 });
 
   /*
    * ==========================================================
@@ -415,52 +395,35 @@ test("Create Manual Payment", async ({ page }) => {
       )
       .first(),
   ).toBeVisible();
-
+await page.waitForTimeout(10_000);
   /*
    * ==========================================================
    * REVIEW PAID INVOICES
    * ==========================================================
    */
+  
+const invoiceTab =
+    await page.getByRole('link', { name: 'Paid Invoices' }
+    );
+
+  if (
+    await invoiceTab
+      .isVisible()
+      .catch(() => false)
+  ) {
+    await invoiceTab.click();
+  }
 
   for (
     const invoice
     of paymentData.invoices
   ) {
     await expect(
-      page
-        .getByText(
-          invoice.invoiceNumber,
-          {
-            exact: true,
-          },
-        )
-        .first(),
+     page.getByRole('cell', { name: invoice.invoiceNumber, exact: true }).first(),
     ).toBeVisible();
   }
-
-  /*
-   * ==========================================================
-   * REVIEW HISTORY
-   * ==========================================================
-   */
-
-  const historyTab =
-    page.getByText(
-      "History",
-      {
-        exact: true,
-      },
-    );
-
-  if (
-    await historyTab
-      .isVisible()
-      .catch(() => false)
-  ) {
-    await historyTab.click();
-  }
-
-  /*
+  await page.waitForTimeout(10_000);
+/*
    * ==========================================================
    * DONE
    * ==========================================================
@@ -625,202 +588,25 @@ async function fillCombobox(
  * ============================================================
  * CAPTURE PAYMENT NUMBER
  * ============================================================
- *
- * Oracle may display the generated Payment Number
- * differently depending on the page/dialog.
- *
- * This helper tries:
- *
- * 1. Payment Number textbox
- * 2. Payment Number combobox
- * 3. Payment Number labeled field
- * 4. Read-only Payment Number text
- * 5. Confirmation dialog
  */
 
 async function capturePaymentNumber(
   page: Page,
 ): Promise<string> {
+  // Capture only the payment identifier, not the amount in the confirmation.
+  const paymentPattern = /^Payment\s+(\d+)\s+for\s+.+\s+has been created\.$/;
+  const confirmation = page
+    .locator('[id="_FOd1::msgDlg::_cnt"] .x1mu')
+    .filter({ hasText: paymentPattern });
 
-  const labeledFields = [
-    page.getByRole(
-      "textbox",
-      {
-        name: "Payment Number",
-      },
-    ),
-
-    page.getByRole(
-      "combobox",
-      {
-        name: "Payment Number",
-      },
-    ),
-
-    page.getByLabel(
-      "Payment Number",
-    ),
-  ];
-
-  /*
-   * First try fields that contain a value.
-   */
-
-  for (
-    const locator
-    of labeledFields
-  ) {
-
-    const field =
-      locator.first();
-
-    if (
-      await field
-        .isVisible()
-        .catch(() => false)
-    ) {
-
-      const value = (
-        await field
-          .inputValue()
-          .catch(() => "")
-      ).trim();
-
-      if (value) {
-        return value;
-      }
-    }
+  await expect(confirmation).toBeVisible({ timeout: 60_000 });
+  const message = (await confirmation.innerText()).replace(/\s+/g, ' ').trim();
+  const match = message.match(paymentPattern);
+  if (!match) {
+    throw new Error(`Unable to extract payment number from confirmation: ${message}`);
   }
 
-  /*
-   * Next try a read-only Payment Number label.
-   */
-
-  const paymentNumberLabel =
-    page
-      .getByText(
-        "Payment Number",
-        {
-          exact: true,
-        },
-      )
-      .first();
-
-  if (
-    await paymentNumberLabel
-      .isVisible()
-      .catch(() => false)
-  ) {
-
-    const containerText = (
-      await paymentNumberLabel
-        .locator("xpath=..")
-        .innerText()
-        .catch(() => "")
-    ).trim();
-
-    const number =
-      extractFirstNumberAfterLabel(
-        containerText,
-        "Payment Number",
-      );
-
-    if (number) {
-      return number;
-    }
-  }
-
-  /*
-   * Final fallback:
-   *
-   * Look at the confirmation dialog.
-   *
-   * For example:
-   *
-   * Payment 123456 created
-   */
-
-  const dialog =
-    page
-      .getByRole("dialog")
-      .last();
-
-  if (
-    await dialog
-      .isVisible()
-      .catch(() => false)
-  ) {
-
-    const dialogText = (
-      await dialog.innerText()
-    ).trim();
-
-    const number =
-      extractLongestNumber(
-        dialogText,
-      );
-
-    if (number) {
-      return number;
-    }
-  }
-
-  throw new Error(
-    "Payment was created, but the generated payment number " +
-    "could not be found. Update capturePaymentNumber() with " +
-    "the Payment Number locator from your Oracle page.",
-  );
-}
-
-
-/*
- * ============================================================
- * EXTRACT NUMBER AFTER LABEL
- * ============================================================
- */
-
-function extractFirstNumberAfterLabel(
-  text: string,
-  label: string,
-): string {
-
-  const labelIndex =
-    text.indexOf(label);
-
-  if (labelIndex < 0) {
-    return "";
-  }
-
-  return extractLongestNumber(
-    text.slice(
-      labelIndex + label.length,
-    ),
-  );
-}
-
-
-/*
- * ============================================================
- * EXTRACT LONGEST NUMBER
- * ============================================================
- */
-
-function extractLongestNumber(
-  text: string,
-): string {
-
-  const tokens = text
-    .split(/[^0-9]+/)
-    .filter(
-      (value) =>
-        value.length > 0,
-    )
-    .sort(
-      (a, b) =>
-        b.length - a.length,
-    );
-
-  return tokens[0] ?? "";
+  return match[1];
 }
 
 

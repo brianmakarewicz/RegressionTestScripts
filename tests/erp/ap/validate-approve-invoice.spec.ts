@@ -28,7 +28,7 @@ test('navigate to created invoice in Oracle Fusion', async ({ page }) => {
   await page.getByText('Approval', { exact: true }).click();
   // Target the visible approval menu cell rather than a positional text match.
   const initiateApproval = page.locator('td.xo2')
-    .filter({ hasText: /^Initiate$/ })
+    .filter({ hasText: /^Force Approve$/ })
     .filter({ visible: true });
   await initiateApproval.click({ timeout: 30_000 });
 
