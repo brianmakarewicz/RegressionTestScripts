@@ -330,6 +330,8 @@ export class FusionNavigatorPage {
     await this.page.waitForLoadState("domcontentloaded");
   }
 
+
+  //Navigate to manage invoice, search an invoice number, open the invoice
   async goToAPInvoice(invoiceNumber: string) {
     await this.page.getByRole("link", { name: "Navigator" }).click();
     await this.page.getByTitle("Payables", { exact: true }).click();
@@ -346,6 +348,67 @@ export class FusionNavigatorPage {
     await this.page.getByRole("link", { name: invoiceNumber }).click();
     await expect(
       this.page.getByRole("heading", { name: "Invoice Details" }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  //Navigate to create invoice page
+    async goToCreateAPInvoice() {
+    await this.page.getByRole("link", { name: "Navigator" }).click();
+    await this.page.getByTitle("Payables", { exact: true }).click();
+    await this.page.getByRole("link", { name: "Invoices" }).click();
+    await this.page.getByRole("link", { name: "Tasks" }).click();
+    await this.page.getByRole('link', { name: 'Create Invoice', exact: true }).click();
+    await expect(
+      this.page.getByRole('heading', { name: 'Invoice Header' }),
+    ).toBeVisible({ timeout: 30_000 });
+
+  }
+
+  //Navigate to my receipts page, search for PO number (redwood page))
+    async goToReceipt(PONumber: string) {
+    await this.page.getByRole('link', { name: 'Navigator' }).click();
+    await this.page.getByTitle('Procurement', { exact: true }).click();
+    await this.page.getByRole('link', { name: 'My Receipts' }).click();
+    await this.page.locator('#smart-search-component-search-bar').getByRole('combobox').fill(PONumber);
+    await this.page.locator('div').filter({ hasText: PONumber }).nth(3).click();
+    await this.page.waitForTimeout(3 * 1000);
+  }
+
+  /**
+   * Opens the Payments workspace from Payables in the Navigator.
+   */
+  async goToPaymentsPage(): Promise<void> {
+    await this.page.getByRole("link", { name: "Navigator" }).click();
+    await this.page.getByTitle("Payables", { exact: true }).click();
+    await this.page.getByRole("link", { name: "Payments", exact: true }).click();
+    await expect(
+      this.page.getByText("Payment Process Requests", { exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+
+
+  }
+
+  /**
+   * Opens Create Payment from the Payments workspace task list.
+   */
+  async goToCreatePaymentPage(): Promise<void> {
+    await this.goToPaymentsPage();
+    await this.page.getByRole("link", { name: "Tasks" }).click();
+    await this.page.getByRole('link', { name: 'Create Payment', exact: true }).click();
+    await expect(
+      this.page.getByRole('heading', { name: 'Create Payment' }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
+   * Opens Manage Payments from the Payments workspace task list.
+   */
+  async goToManagePaymentsPage(): Promise<void> {
+    await this.goToPaymentsPage();
+    await this.page.getByRole("link", { name: "Tasks" }).click();
+    await this.page.getByRole('link', { name: 'Manage Payments', exact: true }).click();
+    await expect(
+      this.page.getByRole('heading', { name: 'Search' }),
     ).toBeVisible({ timeout: 30_000 });
   }
 }
