@@ -52,13 +52,12 @@ function validateCreateManualPaymentData(
   const requiredFields: Array<
     keyof Omit<
       CreateManualPaymentData,
-      "paymentDocument" | "invoices" | "supplierSite"
+      "paymentDocument" | "invoices" | "supplierSite" | "paymentDate"
     >
   > = [
     "businessUnit",
     "supplier",
     "description",
-    "paymentDate",
     "disbursementBankAccount",
     "paymentMethod",
     "paymentProcessProfile",
@@ -80,6 +79,11 @@ function validateCreateManualPaymentData(
         `Required manual-payment field is missing: ${field}`,
       );
     }
+  }
+
+  // Omitted, null, or blank dates retain the date supplied by Oracle.
+  if (data.paymentDate != null && typeof data.paymentDate !== "string") {
+    throw new Error("paymentDate must be a string or null when provided.");
   }
 
   // Supplier Site can be null when Oracle does not require a site.

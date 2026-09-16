@@ -1,18 +1,30 @@
+import path from "node:path";
+import { loadCreatePOInvData } from "../../../utils/erp/ap/load-create-po-inv-data";
 import { requireRunProfile } from "../../../config/run-profile";
 import { expect, Locator, Page, test } from '@playwright/test';
 import { AuthenticationWorkflow } from '../../../workflows/authentication.workflow';
 import { FusionNavigatorPage } from '../../../pages/common/fusion-navigator.page';
 
-const PO_NUMBER = requiredEnv('PO_NUMBER');
-const INVOICE_NUMBER = requiredEnv('INVOICE_NUMBER');
-const ITEM_NUMBER = requiredEnv('ITEM_NUMBER');
-const QUANTITY = requiredEnv('QUANTITY');
+const PREFIX = requiredEnv('PREFIX');
 
 const USER_INPUT_TIMEOUT_MS = 5 * 60 * 1_000;
 
 test('Receive PO and verify invoice system hold is released', async ({ page }) => {
   const runProfile = requireRunProfile();
   test.setTimeout(15 * 60 * 1_000);
+
+  const invData = loadCreatePOInvData(path.join(runProfile.testDataPath, "ap", "po_match_inv.json"));
+  const PO_NUMBER = invData.poNumber;
+  const INVOICE_NUMBER = `${PREFIX}${invData.invNumber}`;
+  const receiptLines = invData.lines.filter((line) => !line.lineType);
+  if (receiptLines.length === 0) throw new Error("No PO-matched lines were found in po_match_inv.json.");
+  for (const line of receiptLines) {
+    if (!line.item_number?.trim()) throw new Error(`item_number is required for PO line ${line.poLineNumber}.`);
+    if (!Number.isFinite(Number(line.quantity)) || Number(line.quantity) <= 0) {
+      throw new Error(`Receipt quantity must be positive for PO line ${line.poLineNumber}.`);
+    }
+  }
+
 
   const authentication = new AuthenticationWorkflow(
     page,
@@ -72,43 +84,47 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
    * RECEIVE PO
    * ==========================================================
    */
-  await navigatorPage.goToReceipt(PO_NUMBER);
-  await page.getByRole('checkbox', {
-    name: new RegExp(`^Purchase Order ${PO_NUMBER} ${ITEM_NUMBER}`)
-    }).check();
-  //await page.getByRole('checkbox', { name: 'Purchase Order 3003583 FC-10-F100F-108-02-12 - FortiGate-100F 1 Year FortiGuard' }).check();
- 
-  await page.getByRole('button', { name: 'Receive with Details' }).click();
-  await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).fill(QUANTITY);
-  await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).press('Tab');
-  await page.getByRole('button', { name: 'Submit' }).click();
-  // Return to My Receipts after submitting the receipt.
-  await page
-    .locator('#in-app-navigation_navItem_my-receipts a')
-    .filter({ hasText: /^My Receipts$/ })
-    .click({ timeout: 60_000 });
+  for (const line of receiptLines) {
+    const ITEM_NUMBER = line.item_number!.trim();
+    const QUANTITY = line.quantity;
+    await navigatorPage.goToReceipt(PO_NUMBER);
+    await page.getByRole('checkbox', {
+      name: new RegExp(`^Purchase Order ${escapeRegExp(PO_NUMBER)} ${escapeRegExp(ITEM_NUMBER)}(?:\\s|$)`)
+      }).check();
 
-  await test.step('Confirm the matching item was received today', async () => {
-    const itemDescription = page.locator('a.oj-link-standalone').filter({
-      hasText: new RegExp(`^\\s*${escapeRegExp(ITEM_NUMBER)}(?:\\s|$)`),
+    await page.getByRole('button', { name: 'Receive with Details' }).click();
+    await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).fill(QUANTITY);
+    await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).press('Tab');
+    await page.getByRole('button', { name: 'Submit' }).click();
+    // Return to My Receipts after submitting the receipt.
+    await page
+      .locator('#in-app-navigation_navItem_my-receipts a')
+      .filter({ hasText: /^My Receipts$/ })
+      .click({ timeout: 60_000 });
+
+    await test.step('Confirm the matching item was received today', async () => {
+      const itemDescription = page.locator('a.oj-link-standalone').filter({
+        hasText: new RegExp(`^\\s*${escapeRegExp(ITEM_NUMBER)}(?:\\s|$)`),
+      });
+
+      // Scope to the item's nearest card containing the receipt-date slot.
+      const receiptRow = itemDescription
+        .locator('xpath=ancestor::*[.//div[@slot="quaternary"]][1]')
+        .filter({ visible: true });
+
+      await expect
+        .poll(() => receiptRow.count(), { timeout: 60_000 })
+        .toBeGreaterThanOrEqual(1);
+
+      // Multiple receipts may match the item; at least one must be received today.
+      const receivedToday = receiptRow
+        .locator('div[slot="quaternary"]')
+        .filter({ hasText: /^\s*Received today\s*$/i })
+        .filter({ visible: true });
+      await expect(receivedToday.first()).toBeVisible({ timeout: 60_000 });
     });
 
-    // Scope to the item's nearest card containing the receipt-date slot.
-    const receiptRow = itemDescription
-      .locator('xpath=ancestor::*[.//div[@slot="quaternary"]][1]')
-      .filter({ visible: true });
-
-    await expect
-      .poll(() => receiptRow.count(), { timeout: 60_000 })
-      .toBeGreaterThanOrEqual(1);
-
-    // Multiple receipts may match the item; at least one must be received today.
-    const receivedToday = receiptRow
-      .locator('div[slot="quaternary"]')
-      .filter({ hasText: /^\s*Received today\s*$/i })
-      .filter({ visible: true });
-    await expect(receivedToday.first()).toBeVisible({ timeout: 60_000 });
-  });
+  }
 
   await navigatorPage.goToHomePage();
 
