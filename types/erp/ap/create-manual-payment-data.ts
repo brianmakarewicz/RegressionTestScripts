@@ -14,7 +14,7 @@ export interface CreateManualPaymentData {
   supplierSite: string | null;
   description: string;
   // Use the date format accepted by the Oracle environment.
-  paymentDate: string;
+  paymentDate?: string | null;
   disbursementBankAccount: string;
   paymentMethod: ManualPaymentMethod;
   paymentProcessProfile: string;

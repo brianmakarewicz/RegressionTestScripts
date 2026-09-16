@@ -1,16 +1,26 @@
+import path from "node:path";
+import { loadCreatePOInvData } from "../../../utils/erp/ap/load-create-po-inv-data";
 import { requireRunProfile } from "../../../config/run-profile";
 import { expect, Locator, Page, test } from '@playwright/test';
 import { AuthenticationWorkflow } from '../../../workflows/authentication.workflow';
 import { FusionNavigatorPage } from '../../../pages/common/fusion-navigator.page';
 
-//const PO_NUMBER = requiredEnv('PO_NUMBER');
-const INVOICE_NUMBER = requiredEnv('INVOICE_NUMBER');
+const PREFIX = requiredEnv('PREFIX');
 
 const USER_INPUT_TIMEOUT_MS = 5 * 60 * 1_000;
 
 test('validate and post invoice', async ({ page }) => {
   const runProfile = requireRunProfile();
   test.setTimeout(15 * 60 * 1_000);
+
+  const dataFilePath = path.join(
+    runProfile.testDataPath,
+    "ap",
+    "po_match_inv.json",
+  );
+  const invData = loadCreatePOInvData(dataFilePath);
+  const INVOICE_NUMBER = `${PREFIX}${invData.invNumber}`;
+
 
   const authentication = new AuthenticationWorkflow(
     page,

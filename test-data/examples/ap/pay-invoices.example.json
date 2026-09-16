@@ -1,0 +1,10 @@
+{
+  "template": "FFI CHECK",
+  "expectedOptions": {
+    "disbursementBankAccount": "CHANGE_ME_BANK_ACCOUNT",
+    "paymentDocument": "CHANGE_ME_PAYMENT_DOCUMENT",
+    "paymentProcessProfile": "CHANGE_ME_PROCESS_PROFILE",
+    "paymentConversionRateType": "Corporate"
+  },
+  "paymentName": "RT_PMT"
+}

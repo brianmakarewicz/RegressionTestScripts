@@ -1,5 +1,6 @@
 export interface CreateApInvLineData {
   quantity: string;
+  item_number?: string;
   poLineNumber: string;
   trackAsAsset?: string;
   serialNumber?: string;

@@ -15,7 +15,14 @@ test("Create Manual Payment", async ({ page }) => {
     "manual_payment.json",
   );
 
+  const prefix = process.env.PREFIX?.trim();
+  if (!prefix) throw new Error("Required environment variable PREFIX was not provided.");
   const paymentData = loadCreateManualPaymentData(dataFilePath);
+  // Apply the prefix once so searches and later invoice checks use the same number.
+  paymentData.invoices = paymentData.invoices.map((invoice) => ({
+    ...invoice,
+    invoiceNumber: `${prefix}${invoice.invoiceNumber}`,
+  }));
 
   // Oracle generates this value when the payment is created.
   // It is stored here and reused later when searching Manage Payments.
@@ -66,12 +73,15 @@ test("Create Manual Payment", async ({ page }) => {
     })
     .fill(paymentData.description);
 
-  const paymentDateInput = page.getByRole("textbox", {
-    name: "Payment Date",
-    exact: true,
-  });
-  await paymentDateInput.fill(paymentData.paymentDate);
-  await paymentDateInput.press("Tab");
+  // Leave Oracle's default date unchanged when no payment date is supplied.
+  if (paymentData.paymentDate?.trim()) {
+    const paymentDateInput = page.getByRole("textbox", {
+      name: "Payment Date",
+      exact: true,
+    });
+    await paymentDateInput.fill(paymentData.paymentDate.trim());
+    await paymentDateInput.press("Tab");
+  }
 
   await fillCombobox(
     page,

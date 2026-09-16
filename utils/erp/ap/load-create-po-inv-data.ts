@@ -54,6 +54,7 @@ export function loadCreatePOInvData(jsonFilePath: string): CreateApInvData {
 
       return {
         quantity: line.quantity as string,
+        item_number: getOptionalString(line, "item_number"),
         poLineNumber: line.poLineNumber as string,
         trackAsAsset: getOptionalString(line, "trackAsAsset"),
         serialNumber: getOptionalString(line, "serialNumber"),

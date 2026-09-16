@@ -286,46 +286,39 @@ export class FusionNavigatorPage {
   }
 
   /**
-   * Opens Scheduled Processes from the Tools section of the Navigator.
+   * Opens only the requested Navigator group and preserves an expanded group.
+   */
+  private async openNavigatorGroup(groupName: "tools" | "payables"): Promise<Locator> {
+    const group = this.page.locator(`div[id$="nvgpgl1_groupNode_${groupName}"]`);
+    const header = group.locator(`div[id$="nvgpgl2_groupNode_${groupName}"]`);
+    const content = group.locator(`div[id$="nvgpgl3_groupNode_${groupName}"]`);
+
+    if (!await header.isVisible()) {
+      const navigatorLink = this.page.getByRole("link", { name: "Navigator", exact: true });
+      await expect(navigatorLink).toBeVisible({ timeout: 30_000 });
+      await navigatorLink.click();
+    }
+    await expect(header).toBeVisible({ timeout: 30_000 });
+    await header.scrollIntoViewIfNeeded();
+
+    // Do not use Show More: it expands unrelated groups and changes toggle state.
+    if (!await content.isVisible()) {
+      await header.click();
+    }
+    await expect(content).toBeVisible({ timeout: 30_000 });
+    return content;
+  }
+
+  /**
+   * Opens Scheduled Processes by expanding only Tools in the Navigator.
    */
   async goToScheduledProcessesPage(): Promise<void> {
-    const navigatorLink = this.page.getByRole("link", {
-      name: "Navigator",
-      exact: true,
-    });
-
-    await expect(navigatorLink).toBeVisible({ timeout: 30_000 });
-    await navigatorLink.click();
-
-    const showMoreLink = this.page.locator(
-      'a[id$=":nvcl1"]',
-    );
-
-    // Show More is the readiness signal for the fully loaded Navigator and
-    // exposes all application groups without racing their individual toggles.
-    await expect(showMoreLink).toBeVisible({ timeout: 30_000 });
-    await expect(showMoreLink).toHaveText("Show More");
-    await showMoreLink.click();
-
-    const toolsGroup = this.page.locator(
-      'div[id$="nvgpgl1_groupNode_tools"]',
-    );
-    const toolsHeader = toolsGroup.locator(
-      'div[id$="nvgpgl2_groupNode_tools"]',
-    );
-
-    await expect(toolsGroup).toBeVisible({ timeout: 30_000 });
-    await expect(toolsHeader).toHaveAttribute("title", "Tools");
-
-    const scheduledProcessesLink = toolsGroup.locator(
+    const tools = await this.openNavigatorGroup("tools");
+    const scheduledProcessesLink = tools.locator(
       'a[id$="nv_itemNode_tools_scheduled_processes_fuse_plus"]',
     );
-
     await expect(scheduledProcessesLink).toBeVisible({ timeout: 30_000 });
-    await expect(scheduledProcessesLink).toHaveAttribute(
-      "title",
-      "Scheduled Processes",
-    );
+    await expect(scheduledProcessesLink).toHaveAttribute("title", "Scheduled Processes");
     await scheduledProcessesLink.click();
     await this.page.waitForLoadState("domcontentloaded");
   }
@@ -334,7 +327,9 @@ export class FusionNavigatorPage {
   //Navigate to manage invoice, search an invoice number, open the invoice
   async goToAPInvoice(invoiceNumber: string) {
     await this.page.getByRole("link", { name: "Navigator" }).click();
-    await this.page.getByTitle("Payables", { exact: true }).click();
+    if (!(await this.page.getByRole("link", { name: "Invoices" }).isVisible())) {
+      await this.page.getByTitle("Payables", { exact: true }).click();
+    }
     await this.page.getByRole("link", { name: "Invoices" }).click();
     await this.page.getByRole("link", { name: "Tasks" }).click();
     await this.page.getByRole("link", { name: /manage invoices/i }).click();
@@ -354,7 +349,9 @@ export class FusionNavigatorPage {
   //Navigate to create invoice page
     async goToCreateAPInvoice() {
     await this.page.getByRole("link", { name: "Navigator" }).click();
-    await this.page.getByTitle("Payables", { exact: true }).click();
+    if (!(await this.page.getByRole("link", { name: "Invoices" }).isVisible())) {
+      await this.page.getByTitle("Payables", { exact: true }).click();
+    }
     await this.page.getByRole("link", { name: "Invoices" }).click();
     await this.page.getByRole("link", { name: "Tasks" }).click();
     await this.page.getByRole('link', { name: 'Create Invoice', exact: true }).click();
@@ -367,7 +364,9 @@ export class FusionNavigatorPage {
   //Navigate to my receipts page, search for PO number (redwood page))
     async goToReceipt(PONumber: string) {
     await this.page.getByRole('link', { name: 'Navigator' }).click();
-    await this.page.getByTitle('Procurement', { exact: true }).click();
+    if (!(await this.page.getByRole('link', { name: 'My Receipts' }).isVisible())) {
+      await this.page.getByTitle('Procurement', { exact: true }).click();
+    }
     await this.page.getByRole('link', { name: 'My Receipts' }).click();
     await this.page.locator('#smart-search-component-search-bar').getByRole('combobox').fill(PONumber);
     await this.page.locator('div').filter({ hasText: PONumber }).nth(3).click();
@@ -378,9 +377,10 @@ export class FusionNavigatorPage {
    * Opens the Payments workspace from Payables in the Navigator.
    */
   async goToPaymentsPage(): Promise<void> {
-    await this.page.getByRole("link", { name: "Navigator" }).click();
-    await this.page.getByTitle("Payables", { exact: true }).click();
-    await this.page.getByRole("link", { name: "Payments", exact: true }).click();
+    const payables = await this.openNavigatorGroup("payables");
+    const paymentsLink = payables.getByRole("link", { name: "Payments", exact: true });
+    await expect(paymentsLink).toBeVisible({ timeout: 30_000 });
+    await paymentsLink.click();
     await expect(
       this.page.getByText("Payment Process Requests", { exact: true }),
     ).toBeVisible({ timeout: 30_000 });
@@ -409,6 +409,29 @@ export class FusionNavigatorPage {
     await this.page.getByRole('link', { name: 'Manage Payments', exact: true }).click();
     await expect(
       this.page.getByRole('heading', { name: 'Search' }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
+   * Opens Submit Payment Process Request from the Payments task list.
+   */
+  async goToSubmitPaymentProcessRequestPage(): Promise<void> {
+    await this.goToPaymentsPage();
+    await this.page.getByRole("link", { name: "Tasks", exact: true }).click();
+    await this.page.getByRole("link", { name: "Submit Payment Process Request", exact: true }).click();
+    await expect(
+      this.page.getByRole("heading", { name: "Submit Payment Process Request", exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+
+  /**
+   * Opens Recently Completed payment process requests in the Payments workspace.
+   */
+  async goToRecentlyCompletedPaymentRequestsPage(): Promise<void> {
+    await this.goToPaymentsPage();
+    await this.page.getByText(/^Recently Completed(?: \(\d+\))?$/).click();
+    await expect(
+      this.page.getByRole("columnheader", { name: "Payments Recorded", exact: true }),
     ).toBeVisible({ timeout: 30_000 });
   }
 }

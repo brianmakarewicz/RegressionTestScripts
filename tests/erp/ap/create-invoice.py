@@ -137,7 +137,7 @@ def write_output_file(output_path: Path, data: dict) -> None:
     )
     print(f"Wrote output log file: {output_path}")
     
-def build_invoice_payload(row: dict[str, str]) -> dict:
+def build_invoice_payload(row: dict[str, str], prefix: str, suffix: str | None = None) -> dict:
     return {
         "PurchaseOrderNumber": optional(row["IDENTIFYING_PO"]),
         "BusinessUnit": row["BUSINESS_UNIT"],
@@ -145,7 +145,7 @@ def build_invoice_payload(row: dict[str, str]) -> dict:
         "SupplierSite": row["SUPPLIER_SITE"],
         "LegalEntity": row["LEGAL_ENTITY"],
         "InvoiceGroup": row["INVOICE_GROUPS"],
-        "InvoiceNumber": row["NUMBER"],
+        "InvoiceNumber": prefix + row["NUMBER"] + (suffix or ""),
         "InvoiceAmount": float(row["AMOUNT"]),
         "InvoiceType": row["TYPE"],
         "Description": row["DESCRIPTION"],
@@ -243,6 +243,8 @@ def create_invoice(payload: dict, profile: dict) -> dict:
 
 
 def main() -> None:
+    prefix = required_env("PREFIX")
+    suffix = os.getenv("SUFFIX")
     profile = load_run_profile()
     print(f"Run profile: {profile['name']}")
     csv_path, output_path, rows = read_invoice_rows(profile)
@@ -250,7 +252,7 @@ def main() -> None:
     if not rows:
         raise RuntimeError(f"No invoice rows found in {csv_path}")
 
-    payload = build_invoice_payload(rows[0])
+    payload = build_invoice_payload(rows[0], prefix, suffix)
     response_result = create_invoice(payload, profile)
 
     api_response = response_result.get("apiResponse")
@@ -285,8 +287,6 @@ def main() -> None:
 
     if response_result["success"]:
         print(f"Created invoice {invoice_number}")
-        print(f'***Run the following command prior to calling the validation script:')
-        print(f'$env:INVOICE_NUMBER="{invoice_number}"')
 
     else:
         print(f"Invoice was not created: {response_result['message']}")
