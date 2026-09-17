@@ -14,7 +14,7 @@ export interface CreateApInvData {
   invNumber: string;
   amount?: number;
   description: string;
-  invDate?: string;
+  invDate?: string | null;
   requester: string;
   lines: CreateApInvLineData[];
 }

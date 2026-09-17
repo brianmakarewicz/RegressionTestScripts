@@ -327,6 +327,7 @@ export class FusionNavigatorPage {
   //Navigate to manage invoice, search an invoice number, open the invoice
   async goToAPInvoice(invoiceNumber: string) {
     await this.page.getByRole("link", { name: "Navigator" }).click();
+    await this.page.waitForTimeout(3 * 1000);
     if (!(await this.page.getByRole("link", { name: "Invoices" }).isVisible())) {
       await this.page.getByTitle("Payables", { exact: true }).click();
     }

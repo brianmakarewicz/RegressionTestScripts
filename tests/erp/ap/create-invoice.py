@@ -3,6 +3,7 @@ import csv
 import json
 import os
 import re
+from datetime import date, datetime
 from pathlib import Path
 
 import requests
@@ -119,7 +120,14 @@ def find_invoice_csv(profile: dict) -> Path:
 
 def read_invoice_rows(profile: dict) -> tuple[Path, Path, list[dict[str, str]]]:
     csv_path = find_invoice_csv(profile)
-    output_path = profile["outputFolder"] / f"{csv_path.stem}_log.json"
+    timestamp = os.getenv("RUN_TIMESTAMP", "").strip()
+    if not timestamp:
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", timestamp):
+        raise RuntimeError("RUN_TIMESTAMP must contain only letters, numbers, hyphens, and underscores.")
+    output_folder = profile["outputFolder"] / timestamp
+    output_folder.mkdir(parents=True, exist_ok=True)
+    output_path = output_folder / "ap_inv_log.json"
 
     print(f"Reading invoice CSV: {csv_path}")
     #print(f"Output log file: {output_path}")
@@ -138,6 +146,22 @@ def write_output_file(output_path: Path, data: dict) -> None:
     print(f"Wrote output log file: {output_path}")
     
 def build_invoice_payload(row: dict[str, str], prefix: str, suffix: str | None = None) -> dict:
+    today = date.today().isoformat()
+
+    # CSV dates may be omitted, blank, or written as null.
+    def invoice_date(column: str) -> str:
+        value = optional(row.get(column))
+        if value is None or value.lower() == "null":
+            return today
+        for date_format in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
+            try:
+                return datetime.strptime(value, date_format).date().isoformat()
+            except ValueError:
+                continue
+        raise ValueError(
+            f"Invalid {column} date: {value!r}. Use YYYY-MM-DD, MM/DD/YYYY, or MM/DD/YY."
+        )
+
     return {
         "PurchaseOrderNumber": optional(row["IDENTIFYING_PO"]),
         "BusinessUnit": row["BUSINESS_UNIT"],
@@ -149,9 +173,9 @@ def build_invoice_payload(row: dict[str, str], prefix: str, suffix: str | None =
         "InvoiceAmount": float(row["AMOUNT"]),
         "InvoiceType": row["TYPE"],
         "Description": row["DESCRIPTION"],
-        "InvoiceDate": row["DATE"],
+        "InvoiceDate": invoice_date("DATE"),
         "PaymentTerms": row["PAYMENT_TERMS"],
-        "TermsDate": row["TERMS_DATE"],
+        "TermsDate": invoice_date("TERMS_DATE"),
         "InvoiceCurrency": row["INVOICE_CURRENCY"],
         "PaymentCurrency": row["PAYMENT_CURRENCY"],
         "PaymentMethodCode": row["PAYMENT_METHOD_CODE"],
@@ -163,7 +187,7 @@ def build_invoice_payload(row: dict[str, str], prefix: str, suffix: str | None =
                 "LineAmount": float(row["LINE_AMOUNT"]),
                 "DistributionSet": optional(row["DISTRIBUTION_SET"]),
                 "DistributionCombination": optional(row["DISTRIBUTION_COMBINATION"]),
-                "AccountingDate": row["LINE_ACCOUNTING_DATE"]
+                "AccountingDate": invoice_date("LINE_ACCOUNTING_DATE")
             }
         ],
     }
@@ -267,6 +291,10 @@ def main() -> None:
     else:
         invoice_number = payload["InvoiceNumber"]
         invoice_id = None
+
+    # Keep one log per invoice; replace characters Windows does not allow in filenames.
+    filename_invoice = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", str(invoice_number)).rstrip(" .")
+    output_path = output_path.with_name(f"ap_inv_log_{filename_invoice}.json")
 
     write_output_file(output_path,
         {

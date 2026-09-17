@@ -31,23 +31,22 @@ test('validate and post invoice', async ({ page }) => {
   await authentication.login();
   await navigatorPage.goToAPInvoice(INVOICE_NUMBER);
     
-/*VALIDATE*/
+/*CONFIRM VALIDATED*/
    // await page.getByRole('link', { name: 'Actions', exact: true }).click();
    // await page.getByText('Validate', { exact: true }).click();
     await expect(page.locator('td').filter({ hasText: /^Validated$/ }).first()).toBeVisible({ timeout: 5 * 60 * 1000 } );
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
 
 /*FORCE APPROVAL*/
     await page.getByRole('link', { name: 'Actions', exact: true }).click();
+    await page.waitForTimeout(1 * 1000);
     await page.locator('[id="__af_Z_window"]').getByText('Approval', { exact: true }).click();
+    await page.waitForTimeout(1 * 1000);
     await page.getByText('Force Approve').click();
     await page.waitForTimeout(10 * 1000);
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await page.waitForTimeout(3 * 1000);
 
 /*CONFIRM APPROVAL*/
     await page.getByText('Validated', { exact: true }).click(); 
-
+    await page.waitForTimeout(3 * 1000);
         await test.step('Confirm Approval status equals Manually approved', async () => {
         const approvalRow = page
             .locator('table[summary="Status"] tr')
@@ -58,18 +57,37 @@ test('validate and post invoice', async ({ page }) => {
         await expect(approvalRow).toHaveCount(1);
         const approvalValue = approvalRow.locator('td').nth(1);
         await expect(approvalValue).toContainText('Manually approved');
-      await page.waitForTimeout(3 * 1000);
+      
       });
+      await page.getByRole('link', { name: 'Close' }).click();
     
 /*Post to ledger*/
     await page.getByRole('link', { name: 'Actions', exact: true }).click();
+    await page.waitForTimeout(2 * 1000);
     await page.getByText('Post to Ledger').click();
-    await page.waitForTimeout(5 * 1000);
+    await page.waitForTimeout(8 * 1000);
     await page.getByRole('button', { name: 'OK' }).click();
-    await page.getByRole('button', { name: 'Save and Close' }).click();
     await page.waitForTimeout(3 * 1000);
 
+/*Confirm Accounted*/
+ await page.getByText('Validated', { exact: true }).click();
+  await page.waitForTimeout(3 * 1000);
+  await test.step('Confirm Accounting status equals Accounted', async () => {
+    const accountingRow = page
+      .locator('table[summary="Status"] > tbody > tr')
+      .filter({
+        has: page.getByText('Accounting', { exact: true }),
+      });
 
+    await expect(accountingRow).toHaveCount(1);
+    const accountingValue = accountingRow.locator(':scope > td').nth(1);
+    await expect(accountingValue).toHaveText('Accounted', {
+      timeout: 60_000,
+    });
+    
+    await page.getByRole('button', { name: 'Save and Close' }).click();
+    await page.waitForTimeout(3 * 1000);
+  });
 });
 
   function requiredEnv(name: string): string {

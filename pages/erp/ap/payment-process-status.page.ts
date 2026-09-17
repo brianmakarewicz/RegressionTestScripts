@@ -7,6 +7,8 @@ export class PaymentProcessStatusPage {
   // Filter scheduled processes to the user configured in the run profile.
   async searchBySubmittedBy(username: string): Promise<void> {
     const submittedBy = this.page.locator('input[id$=":srRssdfl:value50::content"]');
+    // Allow the search panel to render before checking whether it needs expanding.
+    await this.page.waitForTimeout(2_000);
     if (!await submittedBy.isVisible()) {
       await this.page.getByRole("button", { name: "Expand Search", exact: true }).click();
     }

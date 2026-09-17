@@ -9,13 +9,14 @@ const PREFIX = requiredEnv('PREFIX');
 
 const USER_INPUT_TIMEOUT_MS = 5 * 60 * 1_000;
 
-test('Receive PO and verify invoice system hold is released', async ({ page }) => {
+test('Receive PO and verify invoice system hold is released', async ({ page }, testInfo) => {
   const runProfile = requireRunProfile();
   test.setTimeout(15 * 60 * 1_000);
 
   const invData = loadCreatePOInvData(path.join(runProfile.testDataPath, "ap", "po_match_inv.json"));
   const PO_NUMBER = invData.poNumber;
   const INVOICE_NUMBER = `${PREFIX}${invData.invNumber}`;
+  const receiptNumbers: string[] = [];
   const receiptLines = invData.lines.filter((line) => !line.lineType);
   if (receiptLines.length === 0) throw new Error("No PO-matched lines were found in po_match_inv.json.");
   for (const line of receiptLines) {
@@ -96,6 +97,7 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
     await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).fill(QUANTITY);
     await page.getByRole('spinbutton', { name: 'Receipt Quantity' }).press('Tab');
     await page.getByRole('button', { name: 'Submit' }).click();
+    await page.waitForTimeout(10_000);
     // Return to My Receipts after submitting the receipt.
     await page
       .locator('#in-app-navigation_navItem_my-receipts a')
@@ -116,16 +118,27 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
         .poll(() => receiptRow.count(), { timeout: 60_000 })
         .toBeGreaterThanOrEqual(1);
 
-      // Multiple receipts may match the item; at least one must be received today.
-      const receivedToday = receiptRow
-        .locator('div[slot="quaternary"]')
-        .filter({ hasText: /^\s*Received today\s*$/i })
-        .filter({ visible: true });
-      await expect(receivedToday.first()).toBeVisible({ timeout: 60_000 });
+      // Use the first result card that matches both the item and Received today.
+      const matchedReceipt = receiptRow.filter({
+        has: page.locator('div[slot="quaternary"]').filter({
+          hasText: /^\s*Received today\s*$/i,
+        }).filter({ visible: true }),
+      }).first();
+      await expect(matchedReceipt).toBeVisible({ timeout: 60_000 });
+      const receiptLink = matchedReceipt.locator('div[slot="overline"] a.oj-link-standalone')
+        .filter({ hasText: /^\s*Receipt\s+\d+\s*$/ });
+      await expect(receiptLink).toBeVisible({ timeout: 60_000 });
+      const receiptNumber = (await receiptLink.innerText()).trim().match(/^Receipt\s+(\d+)$/)![1];
+      receiptNumbers.push(receiptNumber);
+      console.log(`Captured receipt number: ${receiptNumber}`);
+      await testInfo.attach(`Receipt for PO line ${line.poLineNumber}`, {
+        body: JSON.stringify({ invoiceNumber: INVOICE_NUMBER, poNumber: PO_NUMBER, itemNumber: ITEM_NUMBER, receiptNumber }),
+        contentType: "application/json",
+      });
     });
 
   }
-
+  await page.waitForTimeout(5_000);
   await navigatorPage.goToHomePage();
 
   /*
@@ -157,12 +170,9 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
   await test.step('Validate invoice after PO receipt', async () => {
     await openInvoiceActions(page);
 
-    await page.getByRole('link', { name: 'Actions', exact: true }).click();
     await page.getByText('Validate', { exact: true }).click();
     await expect(page.locator('td').filter({ hasText: /^Validated$/ }).first()).toBeVisible({ timeout: 5 * 60 * 1000 } );
     
-
-    await waitForValidationToComplete(page);
   });
 
   /*
@@ -192,6 +202,7 @@ test('Receive PO and verify invoice system hold is released', async ({ page }) =
     console.log('PASS: hold has been released.');
     console.log(`Invoice: ${INVOICE_NUMBER}`);
     console.log(`PO:      ${PO_NUMBER}`);
+    console.log(`Receipts: ${receiptNumbers.join(', ')}`);
     console.log('');
   });
 
@@ -285,6 +296,7 @@ async function openInvoiceActions(page: Page): Promise<void> {
     ],
     'Invoice Actions',
   );
+  await page.waitForTimeout(2_000);
 }
 
 async function waitForValidationToComplete(page: Page): Promise<void> {
