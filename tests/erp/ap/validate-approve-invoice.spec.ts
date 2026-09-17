@@ -47,15 +47,41 @@ test('navigate to created invoice in Oracle Fusion', async ({ page }) => {
   await authentication.login();
   await navigatorPage.goToAPInvoice(invoiceNumber);
 
+  /*VALIDATE*/
   await page.getByRole('link', { name: 'Actions', exact: true }).click();
+  await page.waitForTimeout(2_000);
   await page.getByText('Validate', { exact: true }).click();
   await expect(page.locator('td').filter({ hasText: /^Validated$/ }).first()).toBeVisible();
+  
+  /*FORCE APPROVAL*/
   await page.getByRole('link', { name: 'Actions', exact: true }).click();
+  await page.waitForTimeout(2_000);
   await page.getByText('Approval', { exact: true }).click();
-  // Target the visible approval menu cell rather than a positional text match.
+  await page.waitForTimeout(2_000);
   const initiateApproval = page.locator('td.xo2')
     .filter({ hasText: /^Force Approve$/ })
     .filter({ visible: true });
   await initiateApproval.click({ timeout: 30_000 });
+  await page.waitForTimeout(5_000);
+
+  /*CONFIRM APPROVAL*/
+    await page.getByText('Validated', { exact: true }).click(); 
+
+        await test.step('Confirm Approval status equals Manually approved', async () => {
+        const approvalRow = page
+            .locator('table[summary="Status"] tr')
+            .filter({
+            has: page.getByText('Approval', { exact: true }),
+            });
+
+        await expect(approvalRow).toHaveCount(1);
+        const approvalValue = approvalRow.locator('td').nth(1);
+        await expect(approvalValue).toContainText('Manually approved');
+      await page.waitForTimeout(3 * 1000);
+      });
+  
+  await page.getByRole('button', { name: /Save and Close/i }).click;
+  await page.waitForTimeout(3_000);
+
 
 });

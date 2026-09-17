@@ -20,6 +20,7 @@ test('Create PO match invoice', async ({ page }) => {
   );
   const invData = loadCreatePOInvData(dataFilePath);
   const invNumber = `${PREFIX}${invData.invNumber}`;
+  const invDate = formatInvoiceDate(invData.invDate);
 
   const authentication = new AuthenticationWorkflow(
     page,
@@ -45,10 +46,8 @@ test('Create PO match invoice', async ({ page }) => {
             .fill(String(invData.amount));
         }
     await page.getByRole('textbox', { name: 'Description' }).fill(invData.description);
-    if (invData.invDate !== undefined) {
-        await page.getByRole('textbox', { name: 'Date', exact: true })
-            .fill(String(invData.invDate));
-        }
+    await page.getByRole('textbox', { name: 'Date', exact: true }).fill(invDate);
+    await page.getByRole('textbox', { name: 'Date', exact: true }).press('Tab');
     await page.getByRole('combobox', { name: 'Requester' }).fill(invData.requester);
     await page.getByRole('combobox', { name: 'Requester' }).press('Enter');
   
@@ -352,4 +351,18 @@ async function closeDialogIfPresent(page: Page): Promise<void> {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+// Default absent dates to today and normalize provided dates to MM/DD/YYYY.
+function formatInvoiceDate(value?: string | null): string {
+  let date = new Date();
+  if (value?.trim()) {
+    const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value.trim());
+    if (!match) throw new Error("invDate must use MM/DD/YYYY or be null.");
+    const [, month, day, year] = match.map(Number);
+    date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      throw new Error(`Invalid invDate: ${value}`);
+    }
+  }
+  return `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}/${date.getFullYear()}`;
 }
