@@ -80,7 +80,7 @@ test('navigate to created invoice in Oracle Fusion', async ({ page }) => {
       await page.waitForTimeout(3 * 1000);
       });
   
-  await page.getByRole('button', { name: /Save and Close/i }).click;
+  await page.getByRole('button', { name: /Save and Close/i }).click();
   await page.waitForTimeout(3_000);
 
 
