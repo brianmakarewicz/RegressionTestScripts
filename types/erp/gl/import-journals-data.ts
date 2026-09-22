@@ -2,4 +2,6 @@
 export interface ImportJournalsData {
   source: string;
   ledger: string;
+  /** File attached to the imported journal before posting or approval. */
+  attachmentFilePath: string;
 }

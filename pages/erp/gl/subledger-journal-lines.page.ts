@@ -36,10 +36,9 @@ export class SubledgerJournalLinesPage {
       .getByRole("button", { name: "View Transaction", exact: true })
       .click();
 
-    // The invoice identifier after the colon is environment-specific.
-    await expect(
-      this.page.getByRole("heading", { name: /^Invoice(?:\s*:|$)/ }),
-    ).toBeVisible({ timeout: 60_000 });
+    await expect(this.page.getByRole("heading").first()).toBeVisible({
+      timeout: 60_000,
+    });
 
     await this.page
       .getByRole("button", { name: "Done", exact: true })

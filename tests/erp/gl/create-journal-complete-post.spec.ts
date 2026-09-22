@@ -42,6 +42,9 @@ test("user can create, complete, and post a journal", async ({ page }) => {
   await createJournalPage.chooseAttachmentFile(
     journalData.attachmentFilePath,
   );
+  await createJournalPage.chooseAttachmentFile2(
+    journalData.attachmentFilePath,
+  );
   await createJournalPage.selectLedger(journalData.ledger);
   await createJournalPage.selectCategory(journalData.category);
 

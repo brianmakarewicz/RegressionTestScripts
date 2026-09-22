@@ -49,11 +49,18 @@ export class EditJournalPage {
       /[.*+?^${}()|[\]\\]/g,
       "\\$&",
     );
+    const expectedPattern = new RegExp(`^${escapedPrefix}(?:$|\\s)`);
 
     await expect(journalBatchName).toBeVisible({ timeout: 30_000 });
-    await expect(journalBatchName).toHaveText(
-      new RegExp(`^${escapedPrefix}(?:$|\\s)`),
+    const isEditableControl = await journalBatchName.evaluate((element) =>
+      element.matches("input, textarea"),
     );
+
+    if (isEditableControl) {
+      await expect(journalBatchName).toHaveValue(expectedPattern);
+      return;
+    }
+    await expect(journalBatchName).toHaveText(expectedPattern);
   }
 
   async verifyBalanceType(expectedBalanceType: string): Promise<void> {
@@ -94,9 +101,7 @@ export class EditJournalPage {
     const statusRow = this.page.locator(`tr[id$="${rowIdSuffix}"]`);
 
     await expect(statusRow).toBeVisible({ timeout: 30_000 });
-    await expect(
-      statusRow.getByText(label, { exact: true }),
-    ).toBeVisible();
+    await expect(statusRow.getByText(label, { exact: true })).toBeVisible();
     await expect(
       statusRow.getByText(expectedValue, { exact: true }),
     ).toBeVisible();
@@ -125,7 +130,7 @@ export class EditJournalPage {
 
     await expect(journalLinesTable).toBeVisible({ timeout: 30_000 });
 
-    const journalLineRows = journalLinesTable.locator('tr[_afrrk]');
+    const journalLineRows = journalLinesTable.locator("tr[_afrrk]");
     await expect(journalLineRows).toHaveCount(
       originalLineCount + expectedBalancingLineCount,
     );
@@ -155,11 +160,7 @@ export class EditJournalPage {
       "Funds Status",
       "Not attempted",
     );
-    await this.verifyReadOnlyStatusRow(
-      "ap1:plam4",
-      "Batch Status",
-      "Unposted",
-    );
+    await this.verifyReadOnlyStatusRow("ap1:plam4", "Batch Status", "Unposted");
     await this.verifyReadOnlyStatusRow(
       "ap1:plam5",
       "Completion Status",
@@ -188,6 +189,52 @@ export class EditJournalPage {
     ).toBeVisible({ timeout: 30_000 });
   }
 
+  async chooseAttachmentFile(filePath: string): Promise<void> {
+    await this.page.getByRole("link", { name: "Manage Attachments" }).click();
+
+    const attachmentInput = this.page.locator(
+      'input[type="file"][name*="ifPopup"]',
+    );
+
+    await expect(attachmentInput).toBeVisible({ timeout: 30_000 });
+    await attachmentInput.setInputFiles(filePath);
+
+    const attachmentTitleTextbox = this.page.locator(
+      'input[name*="popTitleInputText"]',
+    );
+
+    await expect(attachmentTitleTextbox).not.toHaveValue("", {
+      timeout: 30_000,
+    });
+
+    await this.page.getByRole("button", { name: "OK" }).click();
+  }
+
+  async chooseAttachmentFile2(filePath: string): Promise<void> {
+    await this.page.getByRole("link", { name: "Show More" }).nth(1).click();
+    await this.page
+      .getByRole("link", { name: "Manage Attachments" })
+      .nth(1)
+      .click();
+
+    const attachmentInput = this.page.locator(
+      'input[type="file"][name*="a3:"][name*="ifPopup"]',
+    );
+
+    await expect(attachmentInput).toBeAttached({ timeout: 30_000 });
+    await attachmentInput.setInputFiles(filePath);
+
+    const attachmentTitleTextbox = this.page.locator(
+      'input[name*="a3:"][name*="popTitleInputText"]',
+    );
+
+    await expect(attachmentTitleTextbox).not.toHaveValue("", {
+      timeout: 30_000,
+    });
+
+    await this.page.getByRole("button", { name: "OK" }).click();
+  }
+
   async openReversalTab(): Promise<void> {
     const reversalLink = this.page.getByRole("link", {
       name: "Reversal",
@@ -197,9 +244,9 @@ export class EditJournalPage {
     await expect(reversalLink).toBeVisible({ timeout: 30_000 });
     await reversalLink.click();
 
-    await expect(
-      this.page.locator('tr[id$="plam28"]'),
-    ).toBeVisible({ timeout: 30_000 });
+    await expect(this.page.locator('tr[id$="plam28"]')).toBeVisible({
+      timeout: 30_000,
+    });
   }
 
   /** Selects the tester-configured period from Oracle's searchable LOV. */
@@ -487,14 +534,9 @@ export class EditJournalPage {
     const actionLogTable = this.page.getByRole("table", {
       name: "Action Log",
     });
-    const escapedAction = expectedAction.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&",
-    );
+    const escapedAction = expectedAction.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const matchingAction = actionLogTable
-      .locator(
-        'tr[_afrrk] table[summary=""] > tbody > tr > td:nth-child(2)',
-      )
+      .locator('tr[_afrrk] table[summary=""] > tbody > tr > td:nth-child(2)')
       .filter({ hasText: new RegExp(`^${escapedAction}$`) })
       .first();
 
@@ -521,6 +563,7 @@ export class EditJournalPage {
    * verified separately from Manage Journals.
    */
   async approveJournalBatch(): Promise<void> {
+    await this.page.waitForTimeout(3_000);
     const approveButton = this.page.getByRole("button", {
       name: "Approve",
       exact: true,

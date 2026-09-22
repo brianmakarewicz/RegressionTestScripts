@@ -80,6 +80,8 @@ export class VacationRulePage {
     await delegateToRadio.click();
     await expect(delegateToRadio).toBeChecked();
 
+    await this.page.waitForTimeout(3_000);
+
     const selectUserLink = worklistPage.locator(
       'a[id$="vacRuleDelegateIdentityBrowserLink"]',
     );

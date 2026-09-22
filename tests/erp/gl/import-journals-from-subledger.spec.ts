@@ -10,10 +10,10 @@ import { loadImportJournalsData } from "../../../utils/erp/gl/load-import-journa
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.1.3 - user can submit Import Journals", async (
-  { page },
+  { browser, page },
   testInfo,
 ) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
 
   const runProfile = requireRunProfile();
   const dataFilePath = path.join(
@@ -96,22 +96,102 @@ test("GL 4.1.3 - user can submit Import Journals", async (
     importData.ledger,
   );
   await editJournalPage.waitForEditJournalPage();
-  await editJournalPage.verifyImportedJournalPrePostState();
+  await editJournalPage.verifyJournalBatchNamePrefix(journalBatchName);
+  await editJournalPage.verifyLedger(importData.ledger);
 
-  const postingProcessId = await editJournalPage.postAutoApprovedJournal();
-
-  console.log(`Post Journals process ID: ${postingProcessId}`);
-  await testInfo.attach("Post Journals process ID", {
-    body: postingProcessId,
-    contentType: "text/plain",
-  });
-
-  await editJournalPage.returnToManageJournals();
-  await manageJournalsPage.waitForJournalFinalStateByNameOrPrefixAndLedger(
-    journalBatchName,
-    importData.ledger,
-    "Posted",
-    "Not Reversible - Reversal information is not available",
-    postingProcessId,
+  const attachmentPath = path.resolve(
+    process.cwd(),
+    importData.attachmentFilePath,
   );
+
+  await editJournalPage.chooseAttachmentFile(attachmentPath);
+  await editJournalPage.chooseAttachmentFile2(attachmentPath);
+  await editJournalPage.saveAndClose();
+
+  const approvalStatus =
+    await manageJournalsPage.getApprovalStatusByNameOrPrefixAndLedger(
+      journalBatchName,
+      importData.ledger,
+    );
+
+  if (approvalStatus === "Not required") {
+    await manageJournalsPage.openJournalForLedgerByNameOrPrefix(
+      journalBatchName,
+      importData.ledger,
+    );
+    await editJournalPage.waitForEditJournalPage();
+    await editJournalPage.verifyImportedJournalPrePostState();
+
+    const postingProcessId = await editJournalPage.postAutoApprovedJournal();
+
+    console.log(`Post Journals process ID: ${postingProcessId}`);
+    await testInfo.attach("Post Journals process ID", {
+      body: postingProcessId,
+      contentType: "text/plain",
+    });
+
+    await editJournalPage.returnToManageJournals();
+    await manageJournalsPage.waitForJournalFinalStateByNameOrPrefixAndLedger(
+      journalBatchName,
+      importData.ledger,
+      "Posted",
+      "Not Reversible - Reversal information is not available",
+      postingProcessId,
+    );
+    return;
+  }
+
+  if (approvalStatus === "Required") {
+    await manageJournalsPage.openJournalForLedgerByNameOrPrefix(
+      journalBatchName,
+      importData.ledger,
+    );
+    await editJournalPage.waitForEditJournalPage();
+    await editJournalPage.verifyJournalBatchNamePrefix(journalBatchName);
+    await editJournalPage.verifyLedger(importData.ledger);
+    await editJournalPage.postJournal();
+    await editJournalPage.returnToManageJournals();
+  } else if (approvalStatus !== "In process") {
+    throw new Error(
+      `Expected ${journalBatchName} approval status to be Not required, Required, or In process, but found ${approvalStatus}`,
+    );
+  }
+
+  const approverContext = await browser.newContext();
+
+  try {
+    const approverPage = await approverContext.newPage();
+    const approverLogin = new AuthenticationWorkflow(
+      approverPage,
+      runProfile.user("glApprover"),
+    );
+    const approverNavigator = new FusionNavigatorPage(approverPage);
+    const approverManageJournalsPage = new ManageJournalsPage(approverPage);
+    const approverEditJournalPage = new EditJournalPage(approverPage);
+
+    await approverLogin.login();
+    await approverNavigator.goToManageJournalsPage();
+    await approverManageJournalsPage.findJournalBatchByNameOrPrefix(
+      journalBatchName,
+    );
+    await approverManageJournalsPage.openJournalForLedgerByNameOrPrefix(
+      journalBatchName,
+      importData.ledger,
+    );
+    await approverEditJournalPage.waitForEditJournalPage();
+    await approverEditJournalPage.verifyJournalBatchNamePrefix(
+      journalBatchName,
+    );
+    await approverEditJournalPage.verifyLedger(importData.ledger);
+    await approverEditJournalPage.approveJournalBatch();
+
+    await approverEditJournalPage.returnToManageJournals();
+    await approverManageJournalsPage
+      .waitForJournalBatchByNameOrPrefixToBeApprovedAndPosted(
+        journalBatchName,
+        importData.ledger,
+      );
+  } finally {
+    await approverContext.close();
+  }
 });

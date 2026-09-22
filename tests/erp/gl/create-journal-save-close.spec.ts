@@ -44,6 +44,9 @@ test("user can enter Create Journal header information and attach a file", async
   await createJournalPage.chooseAttachmentFile(
     journalData.attachmentFilePath,
   );
+  await createJournalPage.chooseAttachmentFile2(
+    journalData.attachmentFilePath,
+  );
   await createJournalPage.selectLedger(journalData.ledger);
   await createJournalPage.selectCategory(journalData.category);
 
