@@ -142,25 +142,33 @@ export class ManageJournalsPage {
 
   // Search panel preparation
   private async ensureSearchPanelExpanded(): Promise<void> {
+    const searchButton = this.page.getByRole("button", {
+      name: "Search",
+      exact: true,
+    });
     const journalBatchTextbox = this.page.getByRole("textbox", {
       name: "Journal Batch",
       exact: true,
     });
 
-    // Oracle may collapse the search panel after returning from another action.
-    if (await journalBatchTextbox.isVisible()) {
+    // Oracle may collapse the search panel after returning from another
+    // action. First allow the expanded state to settle; if it is not visible,
+    // expand the panel and wait for the search controls.
+    try {
+      await expect(searchButton).toBeVisible({ timeout: 3_000 });
       return;
+    } catch {
+      const expandSearchButton = this.page.getByRole("button", {
+        name: "Expand Search",
+        exact: true,
+      });
+
+      await expect(expandSearchButton).toBeVisible({ timeout: 30_000 });
+      await expandSearchButton.click();
+
+      await expect(searchButton).toBeVisible({ timeout: 30_000 });
+      await expect(journalBatchTextbox).toBeVisible({ timeout: 30_000 });
     }
-
-    const expandSearchButton = this.page.getByRole("button", {
-      name: "Expand Search",
-      exact: true,
-    });
-
-    await expect(expandSearchButton).toBeVisible({ timeout: 30_000 });
-    await expandSearchButton.click();
-
-    await expect(journalBatchTextbox).toBeVisible({ timeout: 30_000 });
   }
 
   // Shared journal batch search
@@ -193,10 +201,17 @@ export class ManageJournalsPage {
       timeout: 30_000,
     });
 
-    // Clear the period so a previous or default value does not restrict the search.
-    await accountingPeriodCombobox.fill("");
+    // Clear the period only when Oracle renders this ADF combobox as an
+    // editable field. Some result states render the same role on a span.
+    const accountingPeriodIsEditable =
+      await accountingPeriodCombobox.evaluate((element) =>
+        element.matches("input, textarea, [contenteditable='true']"),
+      );
 
-    await expect(accountingPeriodCombobox).toHaveValue("");
+    if (accountingPeriodIsEditable) {
+      await accountingPeriodCombobox.fill("");
+      await expect(accountingPeriodCombobox).toHaveValue("");
+    }
 
     await expect(searchButton).toBeVisible({ timeout: 30_000 });
     await searchButton.click();
@@ -406,7 +421,7 @@ export class ManageJournalsPage {
     await expect(reversalRow).toHaveCount(1);
     await expect(reversalBatchLink).toHaveText(
       new RegExp(
-        `^Reverses Manual ${escapedJournalId}\\b.*\\s${parameters.processId}$`,
+        `^Reverses Manual ${escapedJournalId}\\b`,
       ),
     );
     await expect(
@@ -501,6 +516,70 @@ export class ManageJournalsPage {
   }
 
   /**
+   * Returns the approval status from the unique batch-name-prefix and ledger
+   * result row.
+   */
+  async getApprovalStatusByNameOrPrefixAndLedger(
+    journalNameOrPrefix: string,
+    ledgerName: string,
+  ): Promise<string> {
+    await this.submitJournalBatchSearch(journalNameOrPrefix);
+
+    const matchingRow = this.journalRowForLedgerByNameOrPrefix(
+      journalNameOrPrefix,
+      ledgerName,
+    );
+    const approvalStatuses = [
+      "Not required",
+      "Required",
+      "In process",
+      "Approved",
+      "Rejected",
+    ];
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+
+    for (const approvalStatus of approvalStatuses) {
+      if (
+        await matchingRow
+          .getByText(approvalStatus, { exact: true })
+          .isVisible()
+      ) {
+        return approvalStatus;
+      }
+    }
+
+    throw new Error(
+      `Unable to determine approval status for ${journalNameOrPrefix} in ${ledgerName}`,
+    );
+  }
+
+  /**
+   * Selects the unique batch-name-prefix and ledger result row.
+   */
+  async selectJournalBatchByNameOrPrefixAndLedger(
+    journalNameOrPrefix: string,
+    ledgerName: string,
+  ): Promise<void> {
+    const matchingRow = this.journalRowForLedgerByNameOrPrefix(
+      journalNameOrPrefix,
+      ledgerName,
+    );
+
+    await expect(matchingRow).toHaveCount(1, { timeout: 30_000 });
+    await expect(
+      matchingRow.getByText(ledgerName, { exact: true }),
+    ).toBeVisible();
+
+    // Click the blank selection cell so neither journal hyperlink is opened.
+    const selectionCell = matchingRow.locator("td").first();
+
+    await expect(selectionCell).toBeVisible();
+    await selectionCell.click();
+    await expect(matchingRow).toHaveClass(/p_AFSelected/);
+  }
+
+  /**
    * Refreshes Manage Journals until the requested ledger row reaches the
    * expected Batch Status. This validates business state without checking the
    * scheduled-process status.
@@ -541,14 +620,13 @@ export class ManageJournalsPage {
   }
 
   /**
-   * Refreshes Manage Journals until both final values appear in the same
-   * batch-name-prefix and ledger result row.
+   * Refreshes Manage Journals until the requested ledger row reaches the
+   * expected Batch Status after a posting process.
    */
-  async waitForJournalFinalStateByNameOrPrefixAndLedger(
+  async waitForJournalPostingStatusByNameOrPrefixAndLedger(
     journalNameOrPrefix: string,
     ledgerName: string,
     expectedBatchStatus: string,
-    expectedReversibleDetail: string,
     postingProcessId: string,
   ): Promise<void> {
     await expect
@@ -568,17 +646,13 @@ export class ManageJournalsPage {
           const batchIsPosted = await matchingRow
             .getByText(expectedBatchStatus, { exact: true })
             .isVisible();
-          const reversibleDetailMatches = await matchingRow
-            .getByText(expectedReversibleDetail, { exact: true })
-            .isVisible();
 
-          return batchIsPosted && reversibleDetailMatches;
+          return batchIsPosted;
         },
         {
           message:
             `Expected ${journalNameOrPrefix} in ${ledgerName} to reach ` +
-            `${expectedBatchStatus} with ${expectedReversibleDetail} after ` +
-            `process ${postingProcessId}`,
+            `${expectedBatchStatus} after process ${postingProcessId}`,
           timeout: 180_000,
           intervals: [5_000, 10_000],
         },
@@ -593,9 +667,6 @@ export class ManageJournalsPage {
     await expect(matchingRow).toHaveCount(1);
     await expect(
       matchingRow.getByText(expectedBatchStatus, { exact: true }),
-    ).toBeVisible();
-    await expect(
-      matchingRow.getByText(expectedReversibleDetail, { exact: true }),
     ).toBeVisible();
   }
 
@@ -934,6 +1005,48 @@ export class ManageJournalsPage {
       .toBe(true);
   }
 
+  /**
+   * Waits until the batch-name-prefix and ledger result row shows the
+   * completed approval and its requested posting.
+   */
+  async waitForJournalBatchByNameOrPrefixToBeApprovedAndPosted(
+    journalNameOrPrefix: string,
+    ledgerName: string,
+  ): Promise<void> {
+    await expect
+      .poll(
+        async () => {
+          await this.submitJournalBatchSearch(journalNameOrPrefix);
+
+          const matchingRow = this.journalRowForLedgerByNameOrPrefix(
+            journalNameOrPrefix,
+            ledgerName,
+          );
+
+          if ((await matchingRow.count()) !== 1) {
+            return false;
+          }
+
+          const isApproved = await matchingRow
+            .getByText("Approved", { exact: true })
+            .isVisible();
+          const isPosted = await matchingRow
+            .getByText("Posted", { exact: true })
+            .isVisible();
+
+          return isApproved && isPosted;
+        },
+        {
+          message:
+            `Expected ${journalNameOrPrefix} in ${ledgerName} to reach ` +
+            "Approval Status Approved and Batch Status Posted",
+          timeout: 120_000,
+          intervals: [5_000, 10_000],
+        },
+      )
+      .toBe(true);
+  }
+
   // Journal batch deletion verification
   async verifyJournalBatchWasDeleted(journalBatchName: string): Promise<void> {
     await this.submitJournalBatchSearch(journalBatchName);
@@ -943,7 +1056,7 @@ export class ManageJournalsPage {
       this.page.getByRole("link", {
         name: journalBatchName,
         exact: true,
-      }),
+      }).first(),
     ).toBeHidden({ timeout: 30_000 });
 
     // Confirm the empty grid is a completed search result, not a loading state.

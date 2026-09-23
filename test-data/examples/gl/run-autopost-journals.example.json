@@ -1,5 +1,6 @@
 {
   "journalBaseName": "EXAMPLE_SPREADSHEET_JOURNAL_BASE_NAME",
   "ledger": "Example Primary Ledger",
-  "criteriaSet": "Example AutoPost Criteria Set"
+  "criteriaSet": "Example AutoPost Criteria Set",
+  "attachmentFilePath": "test-data/attachments/TestFile.example.txt"
 }

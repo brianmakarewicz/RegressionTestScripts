@@ -6,4 +6,6 @@ export interface RunAutoPostJournalsData {
   ledger: string;
   /** Existing Oracle AutoPost criteria set to submit. */
   criteriaSet: string;
+  /** File attached to the journal before AutoPost. */
+  attachmentFilePath: string;
 }

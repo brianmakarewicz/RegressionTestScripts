@@ -1,4 +1,5 @@
 {
   "source": "Spreadsheet",
-  "ledger": "Example Primary Ledger"
+  "ledger": "Example Primary Ledger",
+  "attachmentFilePath": "test-data/attachments/TestFile.example.txt"
 }

@@ -10,10 +10,10 @@ import { loadRunAutoPostJournalsData } from "../../../utils/erp/gl/load-run-auto
 import { AuthenticationWorkflow } from "../../../workflows/authentication.workflow";
 
 test("GL 4.4.3 - authorized user can run AutoPost journals", async (
-  { page },
+  { browser, page },
   testInfo,
 ) => {
-  test.setTimeout(420_000);
+  test.setTimeout(900_000);
 
   const runProfile = requireRunProfile();
   const autoPostDataFilePath = path.join(
@@ -25,6 +25,7 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
     journalBaseName,
     ledger: ledgerName,
     criteriaSet,
+    attachmentFilePath,
   } = loadRunAutoPostJournalsData(autoPostDataFilePath);
 
   const authentication = new AuthenticationWorkflow(
@@ -46,6 +47,18 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
     journalBaseName,
     "Unposted",
   );
+  await manageJournalsPage.openJournalForLedgerByNameOrPrefix(
+    journalBaseName,
+    ledgerName,
+  );
+  await editJournalPage.waitForEditJournalPage();
+  await editJournalPage.verifyJournalBatchNamePrefix(journalBaseName);
+  await editJournalPage.verifyLedger(ledgerName);
+  const attachmentPath = path.resolve(process.cwd(), attachmentFilePath);
+
+  await editJournalPage.chooseAttachmentFile(attachmentPath);
+  await editJournalPage.chooseAttachmentFile2(attachmentPath);
+  await editJournalPage.saveAndClose();
 
   // Return to the Journals workspace and open the AutoPost process page.
   await manageJournalsPage.clickDone();
@@ -62,9 +75,8 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
     contentType: "text/plain",
   });
 
-  // Oracle returns to Journals after confirmation. Open Scheduled Processes,
-  // verify the exact AutoPost request, and obtain the generated posting request
-  // ID from its Enterprise Scheduler Job Log.
+  // Oracle returns to Journals after confirmation. Open Scheduled Processes
+  // and verify the exact AutoPost request.
   await navigatorPage.goToScheduledProcessesPage();
   await scheduledProcessesPage.verifyOverviewPage();
   await scheduledProcessesPage.waitForProcessToSucceed(
@@ -72,34 +84,112 @@ test("GL 4.4.3 - authorized user can run AutoPost journals", async (
     processId,
   );
 
-  const postingProcessId =
-    await scheduledProcessesPage.downloadLogAndExtractPostingProcessId(
-      processId,
+  let postingProcessId: string | undefined;
+
+  try {
+    postingProcessId =
+      await scheduledProcessesPage.downloadLogAndExtractPostingProcessId(
+        processId,
+      );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (
+      !message.includes(
+        `AutoPost process ${processId} log did not identify a posting process`,
+      )
+    ) {
+      throw error;
+    }
+  }
+
+  if (postingProcessId) {
+    console.log(`Post Journals process ID: ${postingProcessId}`);
+    await testInfo.attach("Post Journals process ID", {
+      body: postingProcessId,
+      contentType: "text/plain",
+    });
+
+    // A broad criteria set can post the target successfully while unrelated
+    // journals make the shared posting request finish with Warning. Continue
+    // for either successful terminal status, then validate the exact target.
+    await scheduledProcessesPage.waitForProcessToReachAcceptedStatus(
+      "Post Journals",
+      postingProcessId,
+      ["Succeeded", "Warning"],
     );
-
-  console.log(`Post Journals process ID: ${postingProcessId}`);
-  await testInfo.attach("Post Journals process ID", {
-    body: postingProcessId,
-    contentType: "text/plain",
-  });
-
-  // A broad criteria set can post the target successfully while unrelated
-  // journals make the shared posting request finish with Warning. Continue
-  // for either successful terminal status, then validate the exact target.
-  await scheduledProcessesPage.waitForProcessToReachAcceptedStatus(
-    "Post Journals",
-    postingProcessId,
-    ["Succeeded", "Warning"],
-  );
+  }
 
   // Return Home, open General Accounting, and search Manage Journals for the
   // prepared spreadsheet journal in the configured primary ledger.
   await navigatorPage.goToManageJournalsPage();
+
+  const approvalStatus =
+    await manageJournalsPage.getApprovalStatusByNameOrPrefixAndLedger(
+      journalBaseName,
+      ledgerName,
+    );
+
+  if (approvalStatus === "Required" || approvalStatus === "In process") {
+    const approverContext = await browser.newContext();
+
+    try {
+      const approverPage = await approverContext.newPage();
+      const approverLogin = new AuthenticationWorkflow(
+        approverPage,
+        runProfile.user("glApprover"),
+      );
+      const approverNavigator = new FusionNavigatorPage(approverPage);
+      const approverManageJournalsPage = new ManageJournalsPage(
+        approverPage,
+      );
+      const approverEditJournalPage = new EditJournalPage(approverPage);
+
+      await approverLogin.login();
+      await approverNavigator.goToManageJournalsPage();
+      await approverManageJournalsPage.findJournalBatchByNameOrPrefix(
+        journalBaseName,
+      );
+      await approverManageJournalsPage.openJournalForLedgerByNameOrPrefix(
+        journalBaseName,
+        ledgerName,
+      );
+      await approverEditJournalPage.waitForEditJournalPage();
+      await approverEditJournalPage.verifyJournalBatchNamePrefix(
+        journalBaseName,
+      );
+      await approverEditJournalPage.verifyLedger(ledgerName);
+      await approverEditJournalPage.approveJournalBatch();
+
+      await approverEditJournalPage.returnToManageJournals();
+      await approverManageJournalsPage
+        .waitForJournalBatchByNameOrPrefixToBeApprovedAndPosted(
+          journalBaseName,
+          ledgerName,
+        );
+    } finally {
+      await approverContext.close();
+    }
+  } else if (
+    approvalStatus !== "Not required" &&
+    approvalStatus !== "Approved"
+  ) {
+    throw new Error(
+      `Expected ${journalBaseName} approval status to be Required, In process, Not required, or Approved, but found ${approvalStatus}`,
+    );
+  }
+
+  if (!postingProcessId && approvalStatus === "Not required") {
+    throw new Error(
+      `AutoPost process ${processId} did not submit Post Journals, but ${journalBaseName} approval status is Not required`,
+    );
+  }
+
   await manageJournalsPage.waitForJournalStatusByNameOrPrefixAndLedger(
     journalBaseName,
     ledgerName,
     "Posted",
-    postingProcessId,
+    postingProcessId ?? processId,
   );
   await manageJournalsPage.openJournalForLedgerByNameOrPrefix(
     journalBaseName,

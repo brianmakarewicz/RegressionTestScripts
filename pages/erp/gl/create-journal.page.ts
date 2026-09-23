@@ -154,6 +154,30 @@ export class CreateJournalPage {
     await this.page.getByRole("button", { name: "OK" }).click();
   }
 
+  async chooseAttachmentFile2(filePath: string): Promise<void> {
+    await this.page.getByRole("link", {name: "Show More"}).nth(1).click();
+
+    await this.page.getByRole("link", { name: "Manage Attachments" }).nth(1).click();
+
+    const attachmentInput = this.page.locator(
+      'input[type="file"][name*="a3:"][name*="ifPopup"]',
+    );
+
+     await expect(attachmentInput).toBeAttached({ timeout: 30_000 });
+
+    await attachmentInput.setInputFiles(filePath);
+
+    const attachmentTitleTextbox = this.page.locator(
+      'input[name*="a3:"][name*="popTitleInputText"]',
+    );
+
+    await expect(attachmentTitleTextbox).not.toHaveValue("", {
+      timeout: 30_000,
+    });
+
+    await this.page.getByRole("button", { name: "OK" }).click();
+  }
+
   async selectLedger(ledgerName: string): Promise<void> {
     const ledgerTextbox = this.page.getByRole("textbox", {
       name: "Ledger",

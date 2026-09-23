@@ -52,7 +52,23 @@ export function loadImportJournalsData(
   const data: ImportJournalsData = {
     source: readRequiredString(parsedData.source, "source", errors),
     ledger: readRequiredString(parsedData.ledger, "ledger", errors),
+    attachmentFilePath: readRequiredString(
+      parsedData.attachmentFilePath,
+      "attachmentFilePath",
+      errors,
+    ),
   };
+
+  if (data.attachmentFilePath) {
+    const attachmentPath = path.resolve(
+      process.cwd(),
+      data.attachmentFilePath,
+    );
+
+    if (!fs.existsSync(attachmentPath)) {
+      errors.push(`attachmentFilePath file was not found: ${attachmentPath}`);
+    }
+  }
 
   if (errors.length > 0) {
     throw new Error(
