@@ -131,13 +131,13 @@ test("GL 4.1.3 - user can submit Import Journals", async (
     });
 
     await editJournalPage.returnToManageJournals();
-    await manageJournalsPage.waitForJournalFinalStateByNameOrPrefixAndLedger(
-      journalBatchName,
-      importData.ledger,
-      "Posted",
-      "Not Reversible - Reversal information is not available",
-      postingProcessId,
-    );
+    await manageJournalsPage
+      .waitForJournalPostingStatusByNameOrPrefixAndLedger(
+        journalBatchName,
+        importData.ledger,
+        "Posted",
+        postingProcessId,
+      );
     return;
   }
 

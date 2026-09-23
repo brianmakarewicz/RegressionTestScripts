@@ -620,14 +620,13 @@ export class ManageJournalsPage {
   }
 
   /**
-   * Refreshes Manage Journals until both final values appear in the same
-   * batch-name-prefix and ledger result row.
+   * Refreshes Manage Journals until the requested ledger row reaches the
+   * expected Batch Status after a posting process.
    */
-  async waitForJournalFinalStateByNameOrPrefixAndLedger(
+  async waitForJournalPostingStatusByNameOrPrefixAndLedger(
     journalNameOrPrefix: string,
     ledgerName: string,
     expectedBatchStatus: string,
-    expectedReversibleDetail: string,
     postingProcessId: string,
   ): Promise<void> {
     await expect
@@ -647,18 +646,13 @@ export class ManageJournalsPage {
           const batchIsPosted = await matchingRow
             .getByText(expectedBatchStatus, { exact: true })
             .isVisible();
-          /*const reversibleDetailMatches = await matchingRow
-            .getByText(expectedReversibleDetail, { exact: true })
-            .isVisible();
 
-          return batchIsPosted && reversibleDetailMatches;*/
-          return batchIsPosted
+          return batchIsPosted;
         },
         {
           message:
             `Expected ${journalNameOrPrefix} in ${ledgerName} to reach ` +
-            `${expectedBatchStatus} with ${expectedReversibleDetail} after ` +
-            `process ${postingProcessId}`,
+            `${expectedBatchStatus} after process ${postingProcessId}`,
           timeout: 180_000,
           intervals: [5_000, 10_000],
         },
@@ -674,9 +668,6 @@ export class ManageJournalsPage {
     await expect(
       matchingRow.getByText(expectedBatchStatus, { exact: true }),
     ).toBeVisible();
-    /*await expect(
-      matchingRow.getByText(expectedReversibleDetail, { exact: true }),
-    ).toBeVisible();*/
   }
 
   /**

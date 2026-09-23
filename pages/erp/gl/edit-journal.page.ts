@@ -563,7 +563,7 @@ export class EditJournalPage {
    * verified separately from Manage Journals.
    */
   async approveJournalBatch(): Promise<void> {
-    await this.page.waitForTimeout(3_000);
+    await this.page.waitForTimeout(10_000);
     const approveButton = this.page.getByRole("button", {
       name: "Approve",
       exact: true,

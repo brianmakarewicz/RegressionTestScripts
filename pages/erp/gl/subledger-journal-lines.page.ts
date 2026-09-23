@@ -32,17 +32,27 @@ export class SubledgerJournalLinesPage {
   }
 
   async openTransactionAndReturn(): Promise<void> {
+    const subledgerHeading = this.page.getByRole("heading", {
+      name: "Subledger Journal Lines",
+      exact: true,
+    });
+
+    await expect(subledgerHeading).toBeVisible({ timeout: 30_000 });
+
     await this.page
       .getByRole("button", { name: "View Transaction", exact: true })
       .click();
 
-    await expect(this.page.getByRole("heading").first()).toBeVisible({
-      timeout: 60_000,
+    await expect(subledgerHeading).toBeHidden({ timeout: 60_000 });
+
+    const doneButton = this.page.getByRole("button", {
+      name: "Done",
+      exact: true,
     });
 
-    await this.page
-      .getByRole("button", { name: "Done", exact: true })
-      .click();
+    await expect(doneButton).toBeVisible({ timeout: 60_000 });
+    await expect(doneButton).toBeEnabled();
+    await doneButton.click();
     await this.expectLoaded();
   }
 }
